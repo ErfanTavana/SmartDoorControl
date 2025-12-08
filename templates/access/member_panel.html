@@ -1,17 +1,47 @@
 {% extends "base/base.html" %}
 {% block title %}Door Control{% endblock %}
 {% block content %}
-<h1>Door Control</h1>
-{% if household %}
-    <p>Household: {{ household.title }}</p>
-    {% if member_profile %}
-        <p>Allowed from {{ member_profile.allowed_from_time }} to {{ member_profile.allowed_to_time }} (Active: {{ member_profile.active }})</p>
-    {% endif %}
-    <form method="post">
-        {% csrf_token %}
-        <button class="btn" type="submit">Open Door</button>
-    </form>
-{% else %}
-    <p>No household available.</p>
-{% endif %}
+<div class="stack">
+    <div class="subtle-card">
+        <p class="muted">کنترل سریع و امن قفل هوشمند خانه شما.</p>
+        <p class="muted">وضعیت و بازه دسترسی فعلی در کارت‌های زیر نمایش داده می‌شود.</p>
+    </div>
+
+    <div class="stack">
+        <div class="pill-actions">
+            <h1>کنترل درب</h1>
+            {% if household %}
+                <span class="badge">{{ household.title }}</span>
+            {% endif %}
+        </div>
+
+        {% if household %}
+            <div class="stat-grid">
+                <div class="stat-card">
+                    <span class="muted">وضعیت دسترسی</span>
+                    <span class="badge {% if member_profile and member_profile.active %}badge-success{% else %}badge-danger{% endif %}">
+                        {% if member_profile and member_profile.active %}فعال{% else %}غیرفعال{% endif %}
+                    </span>
+                </div>
+                <div class="stat-card">
+                    <span class="muted">بازه مجاز</span>
+                    {% if member_profile %}
+                        <span class="stat-value">{{ member_profile.allowed_from_time }} - {{ member_profile.allowed_to_time }}</span>
+                    {% else %}
+                        <span class="stat-value muted">تنظیم نشده</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <form method="post">
+                {% csrf_token %}
+                <button class="btn" type="submit">باز کردن درب</button>
+            </form>
+        {% else %}
+            <div class="subtle-card">
+                <p class="muted">هنوز خانواری برای شما ثبت نشده است.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
 {% endblock %}

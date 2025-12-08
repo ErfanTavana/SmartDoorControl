@@ -5,7 +5,7 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 
-from .models import Device
+from .models import Device, DeviceFirmware, DeviceLog
 from access.models import DoorCommand
 
 
@@ -58,4 +58,42 @@ def ack_command(request):
     command.executed_at = timezone.now()
     command.save(update_fields=["executed", "executed_at"])
 
+    return JsonResponse({"status": "ok"})
+
+
+@require_GET
+@csrf_exempt
+def firmware_payload(request):
+    device = _get_device_from_request(request)
+    if not device:
+        return JsonResponse({"error": "Invalid token"}, status=401)
+
+    try:
+        firmware = device.firmware
+    except DeviceFirmware.DoesNotExist:
+        return JsonResponse({}, status=200)
+
+    payload = {"version": firmware.version, "content": firmware.content}
+    return JsonResponse(payload)
+
+
+@require_POST
+@csrf_exempt
+def ingest_log(request):
+    device = _get_device_from_request(request)
+    if not device:
+        return JsonResponse({"error": "Invalid token"}, status=401)
+
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except json.JSONDecodeError:
+        payload = {}
+
+    message = payload.get("message") or payload.get("log")
+    level = payload.get("level", "info")
+
+    if not message:
+        return JsonResponse({"error": "Missing log message"}, status=400)
+
+    DeviceLog.objects.create(device=device, level=level, message=message)
     return JsonResponse({"status": "ok"})

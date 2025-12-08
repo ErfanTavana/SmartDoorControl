@@ -36,7 +36,8 @@ OTA_ENDPOINT = "/api/device/firmware/"
 OTA_CHECK_INTERVAL_MS = 300000  # 5 minutes
 WATCHDOG_TIMEOUT_MS = 15000
 RESET_DELAY_MS = 2000
-REQUEST_TIMEOUT_SEC = 5
+# HTTP request timeout (in seconds). Increase to allow slower responses before failing.
+REQUEST_TIMEOUT_SEC = 15
 
 # ========================
 # Hardware setup

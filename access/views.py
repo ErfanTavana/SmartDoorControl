@@ -5,7 +5,7 @@ from django.utils import timezone
 
 from accounts.decorators import head_required
 from devices.models import Device
-from households.models import Household, MemberProfile
+from households.models import Building, Household, MemberProfile
 from .models import AccessLog, DoorCommand
 
 
@@ -15,7 +15,11 @@ def member_panel(request):
     if user.is_head:
         household = Household.objects.filter(head=user).first()
         if not household:
-            household = Household.objects.create(head=user, title=f"{user.username}'s Home")
+            household = Household.objects.create(
+                head=user,
+                title=f"{user.username}'s Home",
+                building=Building.objects.create(title=f"{user.username}'s Building"),
+            )
         member_profile = None
     else:
         member_profile = getattr(user, "member_profile", None)
@@ -25,9 +29,9 @@ def member_panel(request):
         if not household:
             messages.error(request, "No household configured.")
             return redirect("access:member_panel")
-        device = household.devices.first()
+        device = household.building.devices.first() if household else None
         if not device:
-            messages.error(request, "No device registered for this household.")
+            messages.error(request, "No device registered for this building.")
             return redirect("access:member_panel")
 
         if user.is_head:

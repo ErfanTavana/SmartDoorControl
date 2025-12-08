@@ -1,36 +1,48 @@
 {% extends "base/base.html" %}
 {% block title %}Members{% endblock %}
 {% block content %}
-<h1>Household Members</h1>
-<a class="btn" href="{% url 'households:member_create' %}">Add Member</a>
-<table>
-    <thead>
-        <tr>
-            <th>Username</th>
-            <th>Allowed From</th>
-            <th>Allowed To</th>
-            <th>Active</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for member in members %}
+<div class="stack">
+    <div class="pill-actions">
+        <h1>مدیریت اعضا</h1>
+        <a class="btn" href="{% url 'households:member_create' %}">افزودن عضو جدید</a>
+    </div>
+    <p class="muted">بازه زمانی و وضعیت فعال بودن هر عضو را در یک نگاه ببینید.</p>
+
+    <table>
+        <thead>
             <tr>
-                <td>{{ member.user.username }}</td>
-                <td>{{ member.allowed_from_time }}</td>
-                <td>{{ member.allowed_to_time }}</td>
-                <td>{{ member.active }}</td>
-                <td>
-                    <a class="btn" href="{% url 'households:member_edit' member.id %}">Edit</a>
-                    <form method="post" action="{% url 'households:member_delete' member.id %}" style="display:inline;">
-                        {% csrf_token %}
-                        <button class="btn btn-secondary" type="submit">Delete</button>
-                    </form>
-                </td>
+                <th>نام کاربری</th>
+                <th>شروع دسترسی</th>
+                <th>پایان دسترسی</th>
+                <th>وضعیت</th>
+                <th>اقدامات</th>
             </tr>
-        {% empty %}
-            <tr><td colspan="5">No members configured.</td></tr>
-        {% endfor %}
-    </tbody>
-</table>
+        </thead>
+        <tbody>
+            {% for member in members %}
+                <tr>
+                    <td>{{ member.user.username }}</td>
+                    <td>{{ member.allowed_from_time }}</td>
+                    <td>{{ member.allowed_to_time }}</td>
+                    <td>
+                        <span class="badge {% if member.active %}badge-success{% else %}badge-danger{% endif %}">
+                            {% if member.active %}فعال{% else %}غیرفعال{% endif %}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="table-actions">
+                            <a class="btn" href="{% url 'households:member_edit' member.id %}">ویرایش</a>
+                            <form method="post" action="{% url 'households:member_delete' member.id %}">
+                                {% csrf_token %}
+                                <button class="btn btn-danger" type="submit">حذف</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="5">عضوی ثبت نشده است.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 {% endblock %}

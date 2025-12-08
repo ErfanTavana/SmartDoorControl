@@ -9,6 +9,7 @@ Features:
 """
 
 import json
+import os
 import time
 import network
 import machine
@@ -30,6 +31,11 @@ RELAY_ACTIVE_LOW = False  # Set to True if the relay is active-low
 POLL_INTERVAL_MS = 5000
 COMMAND_ENDPOINT = "/api/device/command/"
 ACK_ENDPOINT = "/api/device/command/ack/"
+OTA_ENABLED = True
+OTA_ENDPOINT = "/api/device/firmware/"
+OTA_CHECK_INTERVAL_MS = 300000  # 5 minutes
+WATCHDOG_TIMEOUT_MS = 15000
+RESET_DELAY_MS = 2000
 
 # ========================
 # Hardware setup
@@ -52,6 +58,8 @@ _relay_off()
 # WiFi management
 # ========================
 wlan = network.WLAN(network.STA_IF)
+wdt = None
+last_ota_check_ms = 0
 
 
 def setup_wifi(max_attempts=20, retry_delay=500):
@@ -85,6 +93,27 @@ def ensure_wifi():
         return True
     print("[WiFi] Disconnected, attempting reconnection...")
     return setup_wifi()
+
+
+# ========================
+# Reliability helpers
+# ========================
+
+
+def init_watchdog():
+    """Initialize the hardware watchdog so the board reboots if stuck."""
+    global wdt
+    try:
+        wdt = machine.WDT(timeout=WATCHDOG_TIMEOUT_MS)
+        print("[System] Watchdog enabled ({} ms)".format(WATCHDOG_TIMEOUT_MS))
+    except Exception as exc:
+        # In case hardware/watchdog not available, continue without it
+        print("[System] Watchdog not available:", exc)
+
+
+def feed_watchdog():
+    if wdt:
+        wdt.feed()
 
 
 # ========================
@@ -133,6 +162,65 @@ def send_ack(command_id):
             response.close()
 
 
+def fetch_ota_payload():
+    """Fetch OTA payload describing the new firmware."""
+    url = SERVER_BASE_URL + OTA_ENDPOINT
+    print("[OTA] Checking for updates at:", url)
+    response = None
+    try:
+        response = requests.get(url, headers=_headers())
+        if response.status_code != 200:
+            print("[OTA] Unexpected status:", response.status_code)
+            return None
+        data = response.json()
+        if not data or not data.get("content"):
+            print("[OTA] No update content available")
+            return None
+        return data
+    except Exception as exc:
+        print("[OTA] Check failed:", exc)
+        return None
+    finally:
+        if response:
+            response.close()
+
+
+def apply_ota_update(content):
+    """Write new firmware to disk atomically and reboot."""
+    temp_path = "main.py.new"
+    final_path = "main.py"
+    try:
+        with open(temp_path, "w") as fp:
+            fp.write(content)
+        os.rename(temp_path, final_path)
+        print("[OTA] Update written, rebooting...")
+        time.sleep_ms(RESET_DELAY_MS)
+        machine.reset()
+    except Exception as exc:
+        print("[OTA] Failed to apply update:", exc)
+        try:
+            os.remove(temp_path)
+        except Exception:
+            pass
+
+
+def maybe_check_ota(last_check_ms):
+    """Poll OTA endpoint periodically for wireless updates."""
+    if not OTA_ENABLED:
+        return last_check_ms
+
+    now = time.ticks_ms()
+    if last_check_ms and time.ticks_diff(now, last_check_ms) < OTA_CHECK_INTERVAL_MS:
+        return last_check_ms
+
+    payload = fetch_ota_payload()
+    if payload and payload.get("content"):
+        version = payload.get("version", "unknown")
+        print("[OTA] Update available: version {}".format(version))
+        apply_ota_update(payload["content"])
+    return now
+
+
 # ========================
 # Relay control
 # ========================
@@ -150,8 +238,15 @@ def trigger_relay(duration_ms):
 # ========================
 
 def main():
+    global last_ota_check_ms
+
+    init_watchdog()
     setup_wifi()
+    last_ota_check_ms = time.ticks_ms()
+
     while True:
+        feed_watchdog()
+
         if not ensure_wifi():
             print("[WiFi] Not connected, retrying after delay...")
             time.sleep_ms(POLL_INTERVAL_MS)
@@ -168,8 +263,16 @@ def main():
         else:
             print("[Command] No action")
 
+        last_ota_check_ms = maybe_check_ota(last_ota_check_ms)
+        feed_watchdog()
         time.sleep_ms(POLL_INTERVAL_MS)
 
 
 if __name__ == "__main__":
-    main()
+    while True:
+        try:
+            main()
+        except Exception as exc:
+            print("[System] Fatal error, resetting:", exc)
+            time.sleep_ms(RESET_DELAY_MS)
+            machine.reset()

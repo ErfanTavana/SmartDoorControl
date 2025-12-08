@@ -1,0 +1,9 @@
+{% extends "base/base.html" %}
+{% block title %}Household Dashboard{% endblock %}
+{% block content %}
+<h1>{{ household.title }}</h1>
+<p>Members: {{ member_count }}</p>
+<p>Devices: {{ device_count }}</p>
+<a class="btn" href="{% url 'households:member_list' %}">Manage Members</a>
+<a class="btn btn-secondary" href="{% url 'access:access_logs' %}">View Access Logs</a>
+{% endblock %}

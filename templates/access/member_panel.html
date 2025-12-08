@@ -1,0 +1,17 @@
+{% extends "base/base.html" %}
+{% block title %}Door Control{% endblock %}
+{% block content %}
+<h1>Door Control</h1>
+{% if household %}
+    <p>Household: {{ household.title }}</p>
+    {% if member_profile %}
+        <p>Allowed from {{ member_profile.allowed_from_time }} to {{ member_profile.allowed_to_time }} (Active: {{ member_profile.active }})</p>
+    {% endif %}
+    <form method="post">
+        {% csrf_token %}
+        <button class="btn" type="submit">Open Door</button>
+    </form>
+{% else %}
+    <p>No household available.</p>
+{% endif %}
+{% endblock %}

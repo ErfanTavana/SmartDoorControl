@@ -71,13 +71,38 @@ def setup_wifi(max_attempts=20, retry_delay=500):
         return True
 
     print("[WiFi] Connecting to {}...".format(SSID))
-    wlan.connect(SSID, PASSWORD)
+    try:
+        wlan.connect(SSID, PASSWORD)
+    except Exception as exc:
+        # Guard against ESP32 "Wifi Internal Error" raising exceptions
+        print("[WiFi] Connection start failed:", exc)
+        try:
+            wlan.active(False)
+            time.sleep_ms(200)
+            wlan.active(True)
+        except Exception as inner_exc:
+            print("[WiFi] Failed to reset interface:", inner_exc)
+        return False
 
     attempts = 0
     while not wlan.isconnected() and attempts < max_attempts:
         time.sleep_ms(retry_delay)
         feed_watchdog()
         attempts += 1
+        try:
+            status = wlan.status()
+        except Exception as exc:
+            print("[WiFi] Status read failed:", exc)
+            status = None
+        if status is not None and status < 0:
+            print("[WiFi] Internal status error ({}), resetting interface".format(status))
+            try:
+                wlan.active(False)
+                time.sleep_ms(200)
+                wlan.active(True)
+            except Exception as inner_exc:
+                print("[WiFi] Failed to reset interface:", inner_exc)
+            return False
         if attempts % 5 == 0:
             print("[WiFi] Attempt {}...".format(attempts))
 

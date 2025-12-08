@@ -58,6 +58,10 @@ _relay_off()
 # ========================
 # WiFi management
 # ========================
+STAT_IDLE = getattr(network, "STAT_IDLE", 0)
+STAT_CONNECTING = getattr(network, "STAT_CONNECTING", 1)
+STAT_GOT_IP = getattr(network, "STAT_GOT_IP", 5)
+
 wlan = network.WLAN(network.STA_IF)
 wdt = None
 last_ota_check_ms = 0
@@ -67,6 +71,8 @@ def setup_wifi(max_attempts=20, retry_delay=500):
     """Connect to WiFi, retrying up to max_attempts."""
     if not wlan.active():
         wlan.active(True)
+    if wait_for_existing_connection():
+        return True
     if wlan.isconnected():
         return True
 
@@ -111,6 +117,30 @@ def setup_wifi(max_attempts=20, retry_delay=500):
         return True
 
     print("[WiFi] Failed to connect after {} attempts".format(max_attempts))
+    return False
+
+
+def wait_for_existing_connection(max_wait_ms=2000, check_interval_ms=200):
+    """Give the interface a moment to reconnect before forcing a new connect."""
+    waited_ms = 0
+    while waited_ms < max_wait_ms:
+        feed_watchdog()
+        if wlan.isconnected():
+            print("[WiFi] Already connected, IP:", wlan.ifconfig()[0])
+            return True
+
+        try:
+            status = wlan.status()
+        except Exception as exc:
+            print("[WiFi] Status read failed:", exc)
+            status = None
+
+        if status in (STAT_GOT_IP, STAT_CONNECTING, STAT_IDLE):
+            time.sleep_ms(check_interval_ms)
+            waited_ms += check_interval_ms
+            continue
+        break
+
     return False
 
 

@@ -15,14 +15,12 @@
                 <div>
                     <label>{{ field.label }}</label>
                     {{ field }}
-                    {% if field.help_text %}<small class="muted">{{ field.help_text }}</small>{% endif %}
                     {% for error in field.errors %}<div class="badge badge-danger">{{ error }}</div>{% endfor %}
                 </div>
             {% endfor %}
         </div>
         <div class="pill-actions">
             <button class="btn" type="submit">ذخیره</button>
-            <span class="muted">زمان‌بندی دسترسی و وضعیت فعال بودن را به‌روز کنید.</span>
         </div>
     </form>
 </div>

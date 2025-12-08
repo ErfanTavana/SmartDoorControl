@@ -2,6 +2,6 @@ __pycache__/
 *.pyc
 db.sqlite3
 /staticfiles/
-.env
+venv/
 node_modules/
 package-lock.json

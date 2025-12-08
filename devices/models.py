@@ -2,7 +2,7 @@ import secrets
 
 from django.db import models
 
-from households.models import Household
+from households.models import Building
 
 
 def generate_api_token() -> str:
@@ -13,8 +13,8 @@ def generate_api_token() -> str:
 
 
 class Device(models.Model):
-    household = models.ForeignKey(
-        Household, on_delete=models.CASCADE, related_name="devices"
+    building = models.ForeignKey(
+        Building, on_delete=models.CASCADE, related_name="devices"
     )
     api_token = models.CharField(
         max_length=255, unique=True, editable=False, default=generate_api_token
@@ -22,4 +22,4 @@ class Device(models.Model):
     last_seen = models.DateTimeField(null=True, blank=True)
 
     def __str__(self) -> str:
-        return f"Device {self.id} for {self.household}"
+        return f"Device {self.id} for {self.building}"

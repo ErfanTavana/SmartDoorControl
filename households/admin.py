@@ -1,6 +1,12 @@
 from django.contrib import admin
 
-from .models import Household, MemberProfile
+from .models import Building, Household, MemberProfile
+
+
+@admin.register(Building)
+class BuildingAdmin(admin.ModelAdmin):
+    list_display = ("title", "address")
+    search_fields = ("title", "address")
 
 
 @admin.register(Household)

@@ -4,13 +4,22 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from accounts.decorators import head_required
 from .forms import MemberCreationForm, MemberProfileForm
-from .models import Household, MemberProfile
+from .models import Building, Household, MemberProfile
 
 User = get_user_model()
 
 
 def _get_head_household(user):
-    household, _ = Household.objects.get_or_create(head=user, defaults={"title": f"{user.username}'s Home"})
+    household, created = Household.objects.get_or_create(
+        head=user,
+        defaults={
+            "title": f"{user.username}'s Home",
+            "building": Building.objects.create(title=f"{user.username}'s Building"),
+        },
+    )
+    if created and household.building is None:
+        household.building = Building.objects.create(title=f"{user.username}'s Building")
+        household.save(update_fields=["building"])
     return household
 
 
@@ -18,7 +27,7 @@ def _get_head_household(user):
 def head_dashboard(request):
     household = _get_head_household(request.user)
     member_count = household.members.count()
-    device_count = household.devices.count()
+    device_count = household.building.devices.count()
     return render(
         request,
         "households/head_dashboard.html",

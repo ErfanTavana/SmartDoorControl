@@ -24,3 +24,18 @@ This repository will host the Django-based SmartDoorControl system. The goal is 
 - Scaffold the Django project and apps reflecting this design.
 - Add PWA assets (manifest, service worker, icons) to the template-based UI.
 - Port reusable patterns from `unischedule` where applicable (form handling, template organization, and settings structure).
+
+## How to run locally
+1. **Prepare Python deps**
+   - (اختیاری) یک virtualenv بسازید.
+   - `pip install -r requirements.txt`
+2. **اجرای مایگریشن‌ها**
+   - `python manage.py migrate`
+3. **ساخت حساب ادمین (اختیاری)**
+   - `python manage.py createsuperuser`
+4. **کامپایل Tailwind (نسخه CLI)**
+   - `npm install`
+   - `npm run build:css` (فایل `static/css/tailwind.css` ساخته/به‌روز می‌شود)
+5. **اجرای سرور توسعه Django**
+   - `python manage.py runserver`
+6. برنامه از طریق `http://127.0.0.1:8000/` در دسترس است.

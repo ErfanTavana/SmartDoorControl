@@ -22,12 +22,12 @@ except ImportError:  # Fallback for environments that alias urequests
 # ========================
 # Configuration
 # ========================
-SSID = "YOUR_WIFI_SSID"
-PASSWORD = "YOUR_WIFI_PASSWORD"
-SERVER_BASE_URL = "http://example.com"  # No trailing slash
-DEVICE_TOKEN = "replace-with-device-token"
+SSID = "1283"
+PASSWORD = "0928007634"
+SERVER_BASE_URL = "https://erfantavanasmartdoor.pythonanywhere.com/"  # No trailing slash
+DEVICE_TOKEN = "nm5bbP3TA4qHpi2DrBqkcaDgmcFEIvwScv1IedyklPA"
 RELAY_GPIO_PIN = 5
-RELAY_ACTIVE_LOW = False  # Set to True if the relay is active-low
+RELAY_ACTIVE_LOW = True  # Set to True if the relay is active-low
 POLL_INTERVAL_MS = 5000
 COMMAND_ENDPOINT = "/api/device/command/"
 ACK_ENDPOINT = "/api/device/command/ack/"
@@ -36,6 +36,7 @@ OTA_ENDPOINT = "/api/device/firmware/"
 OTA_CHECK_INTERVAL_MS = 300000  # 5 minutes
 WATCHDOG_TIMEOUT_MS = 15000
 RESET_DELAY_MS = 2000
+REQUEST_TIMEOUT_SEC = 5
 
 # ========================
 # Hardware setup
@@ -75,6 +76,7 @@ def setup_wifi(max_attempts=20, retry_delay=500):
     attempts = 0
     while not wlan.isconnected() and attempts < max_attempts:
         time.sleep_ms(retry_delay)
+        feed_watchdog()
         attempts += 1
         if attempts % 5 == 0:
             print("[WiFi] Attempt {}...".format(attempts))
@@ -124,12 +126,18 @@ def _headers():
     return {"X-DEVICE-TOKEN": DEVICE_TOKEN}
 
 
+def _build_url(endpoint):
+    return "{}/{}".format(SERVER_BASE_URL.rstrip("/"), endpoint.lstrip("/"))
+
+
 def send_get_command():
-    url = SERVER_BASE_URL + COMMAND_ENDPOINT
+    url = _build_url(COMMAND_ENDPOINT)
     print("[API] Polling:", url)
     response = None
     try:
-        response = requests.get(url, headers=_headers())
+        response = requests.get(
+            url, headers=_headers(), timeout=REQUEST_TIMEOUT_SEC
+        )
         if response.status_code != 200:
             print("[API] Unexpected status:", response.status_code)
             return None
@@ -145,12 +153,17 @@ def send_get_command():
 
 
 def send_ack(command_id):
-    url = SERVER_BASE_URL + ACK_ENDPOINT
+    url = _build_url(ACK_ENDPOINT)
     payload = {"command_id": command_id}
     print("[API] Sending ACK for command {}".format(command_id))
     response = None
     try:
-        response = requests.post(url, headers=_headers(), data=json.dumps(payload))
+        response = requests.post(
+            url,
+            headers=_headers(),
+            data=json.dumps(payload),
+            timeout=REQUEST_TIMEOUT_SEC,
+        )
         if response.status_code != 200:
             print("[API] ACK failed, status:", response.status_code)
         else:
@@ -164,11 +177,13 @@ def send_ack(command_id):
 
 def fetch_ota_payload():
     """Fetch OTA payload describing the new firmware."""
-    url = SERVER_BASE_URL + OTA_ENDPOINT
+    url = _build_url(OTA_ENDPOINT)
     print("[OTA] Checking for updates at:", url)
     response = None
     try:
-        response = requests.get(url, headers=_headers())
+        response = requests.get(
+            url, headers=_headers(), timeout=REQUEST_TIMEOUT_SEC
+        )
         if response.status_code != 200:
             print("[OTA] Unexpected status:", response.status_code)
             return None

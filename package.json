@@ -1,0 +1,16 @@
+{
+  "name": "smartdoorcontrol",
+  "version": "1.0.0",
+  "description": "This repository will host the Django-based SmartDoorControl system. The goal is to mirror the architecture and coding style used in the referenced `unischedule` project while implementing the door access workflow described in the initial brief.",
+  "main": "index.js",
+  "scripts": {
+    "build:css": "tailwindcss -i ./static/src/input.css -o ./static/css/tailwind.css --minify"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "tailwindcss": "^3.4.11"
+  }
+}

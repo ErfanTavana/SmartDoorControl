@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Smart Door Control icon large">
+  <defs>
+    <linearGradient id="g512" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22d3ee"/>
+      <stop offset="100%" stop-color="#0ea5e9"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#0ea5e9" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="64" fill="#0f172a"/>
+  <rect x="126" y="96" width="260" height="320" rx="36" fill="#0b1220" stroke="url(#g512)" stroke-width="12" filter="url(#shadow)"/>
+  <circle cx="256" cy="270" r="64" fill="none" stroke="url(#g512)" stroke-width="24"/>
+  <circle cx="256" cy="270" r="18" fill="#22d3ee"/>
+  <rect x="236" y="140" width="40" height="24" rx="12" fill="#22d3ee" opacity="0.85"/>
+</svg>

@@ -1,0 +1,9 @@
+{
+  "name": "SmartDoorControl",
+  "short_name": "DoorControl",
+  "start_url": "/door/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "icons": []
+}

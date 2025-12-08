@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,241 +8,95 @@
     <link rel="manifest" href="/static/manifest.json">
     <link rel="icon" href="/static/icons/icon-192.svg">
     <link rel="apple-touch-icon" href="/static/icons/icon-192.svg">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <script src="https://cdn.tailwindcss.com"></script>
     <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'] },
+                    colors: {
+                        accent: '#22d3ee',
+                        'accent-strong': '#0ea5e9',
+                    },
+                },
+            },
+        };
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/static/service-worker.js');
             });
         }
     </script>
-    <title>{% block title %}Smart Door Control{% endblock %}</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
-        :root {
-            --bg: #0f172a;
-            --panel: #0b1220;
-            --card: #111827;
-            --muted: #94a3b8;
-            --border: #1f2937;
-            --accent: #22d3ee;
-            --accent-strong: #0ea5e9;
-            --danger: #ef4444;
-            --success: #10b981;
+    <style type="text/tailwindcss">
+        @layer base {
+            * { @apply box-border; }
+            body {
+                @apply min-h-screen text-slate-100 font-sans;
+                background: radial-gradient(circle at 20% 20%, rgba(34,211,238,0.08), transparent 25%),
+                            radial-gradient(circle at 80% 0%, rgba(14,165,233,0.12), transparent 30%),
+                            #0f172a;
+            }
+            main { @apply px-4 sm:px-6 py-6 pb-9; }
+            h1 { @apply font-semibold tracking-tight mb-4; font-size: clamp(1.25rem, 2vw + 1rem, 1.6rem); }
+            form { @apply grid gap-4; }
+            label { @apply block font-semibold mb-1; }
+            input, select { @apply w-full rounded-xl border border-slate-800 bg-white/5 px-3 py-2.5 text-slate-200 shadow-inner focus:outline-none focus:ring-2 focus:ring-sky-500/60 focus:border-sky-500/60; }
+            header { @apply sticky top-0 z-10 bg-slate-900/70 backdrop-blur border-b border-slate-800; }
         }
 
-        * { box-sizing: border-box; }
-        body {
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            margin: 0;
-            padding: 0;
-            background: radial-gradient(circle at 20% 20%, rgba(34,211,238,0.08), transparent 25%),
-                        radial-gradient(circle at 80% 0%, rgba(14,165,233,0.12), transparent 30%),
-                        var(--bg);
-            color: #e2e8f0;
-            min-height: 100vh;
+        @layer components {
+            .nav { @apply flex justify-between items-center max-w-5xl mx-auto px-5 py-4; }
+            .brand { @apply flex items-center gap-2 font-bold text-[1.05rem] text-slate-200 no-underline; }
+            .brand-dot { @apply w-3 h-3 rounded-full shadow-[0_0_14px_rgba(34,211,238,0.6)]; background: linear-gradient(135deg, #22d3ee, #0ea5e9); }
+            nav a { @apply text-slate-300 inline-flex items-center ml-4 font-medium transition ease-in-out duration-150; }
+            nav a:hover { @apply text-white -translate-y-px; }
+            .container { @apply max-w-5xl mx-auto px-1; }
+            .panel { @apply rounded-2xl border border-slate-800 p-7 shadow-[0_20px_50px_rgba(0,0,0,0.35)] bg-gradient-to-b from-white/5 to-transparent; }
+            .muted { @apply text-slate-400; }
+            .stack { @apply grid gap-4; }
+            .btn { @apply inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-slate-900 bg-gradient-to-br from-accent to-accent-strong shadow-[0_12px_30px_rgba(14,165,233,0.35)] transition ease-in-out duration-150 no-underline; }
+            .btn:hover { @apply -translate-y-px; box-shadow: 0 18px 35px rgba(14,165,233,0.45); }
+            .btn-secondary { @apply bg-white/10 text-slate-100 shadow-none; }
+            .btn-danger { @apply bg-rose-500/10 text-rose-100 shadow-none border border-rose-500/40; }
+            .btn-ghost { @apply bg-transparent text-slate-300 shadow-none; }
+            .pill-actions { @apply flex items-center gap-2 flex-wrap; }
+            .stat-grid { @apply grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))] mt-5; }
+            .stat-card { @apply bg-white/5 border border-slate-800 rounded-xl p-4 grid gap-1; }
+            .stat-value { @apply text-2xl font-bold; }
+            .table-actions { @apply flex gap-2 items-center; }
+            .table-container { @apply w-full overflow-x-auto border border-slate-800 rounded-xl bg-slate-900 mt-4; }
+            table { @apply w-full border-collapse min-w-[520px]; }
+            table th, table td { @apply px-3.5 py-3 text-left border-b border-slate-800; }
+            table th { @apply bg-white/5 text-slate-300 font-semibold; }
+            table tr:last-child td { @apply border-b-0; }
+            table tbody tr:hover { @apply bg-slate-800/30; }
+            .badge { @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-sm border border-slate-800 bg-white/5; }
+            .badge-success { @apply text-green-200 border-green-500/40; }
+            .badge-danger { @apply text-rose-200 border-rose-500/40; }
+            .form-grid { @apply grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]; }
+            .messages { @apply list-none p-0 m-0 mb-4 grid gap-2; }
+            .messages li { @apply px-3.5 py-3 rounded-xl border border-slate-800 bg-white/5; }
+            .messages .success { @apply bg-green-500/10 text-green-200 border-green-500/40; }
+            .messages .error { @apply bg-rose-500/10 text-rose-200 border-rose-500/40; }
+            .subtle-card { @apply bg-white/5 border border-slate-800 rounded-xl p-4 grid gap-2; }
         }
-
-        header {
-            background: rgba(15, 23, 42, 0.7);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid var(--border);
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-
-        .nav {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            max-width: 1100px;
-            margin: 0 auto;
-            padding: 1rem 1.25rem;
-        }
-
-        .brand {
-            display: flex;
-            align-items: center;
-            gap: 0.6rem;
-            font-weight: 700;
-            font-size: 1.05rem;
-            color: #e5e7eb;
-            text-decoration: none;
-        }
-
-        .brand-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-            box-shadow: 0 0 14px rgba(34,211,238,0.6);
-        }
-
-        nav a {
-            color: #cbd5e1;
-            margin-left: 1rem;
-            text-decoration: none;
-            font-weight: 500;
-            transition: color 0.15s ease, transform 0.15s ease;
-        }
-
-        nav a:hover { color: #fff; transform: translateY(-1px); }
-
-        main {
-            padding: 1.5rem 1rem 2.25rem;
-        }
-
-        .container {
-            max-width: 1100px;
-            margin: 0 auto;
-            padding: 0 0.25rem;
-        }
-
-        .panel {
-            background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0));
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 1.75rem;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.35);
-        }
-
-        h1 {
-            margin: 0 0 1rem;
-            font-size: clamp(1.25rem, 2vw + 1rem, 1.6rem);
-            letter-spacing: -0.01em;
-        }
-
-        .muted { color: var(--muted); }
-
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-            padding: 0.6rem 0.9rem;
-            background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-            color: #0b1220;
-            font-weight: 700;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            text-decoration: none;
-            box-shadow: 0 12px 30px rgba(14,165,233,0.35);
-            transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
-        }
-
-        .btn:hover { transform: translateY(-1px); filter: brightness(1.03); box-shadow: 0 18px 35px rgba(14,165,233,0.45); }
-
-        .btn-secondary {
-            background: rgba(148, 163, 184, 0.12);
-            color: #e2e8f0;
-            box-shadow: none;
-        }
-
-        .btn-danger {
-            background: rgba(239, 68, 68, 0.1);
-            color: #fecdd3;
-            box-shadow: none;
-        }
-
-        .btn-ghost { background: transparent; color: #cbd5e1; box-shadow: none; }
-
-        .stack { display: grid; gap: 1rem; }
-
-        .table-container {
-            width: 100%;
-            overflow-x: auto;
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            background: var(--card);
-            margin-top: 1rem;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            min-width: 520px;
-        }
-
-        table th, table td {
-            padding: 0.85rem 0.85rem;
-            text-align: left;
-            border-bottom: 1px solid var(--border);
-        }
-
-        table th { background: rgba(255,255,255,0.02); color: #cbd5e1; font-weight: 600; }
-        table tr:last-child td { border-bottom: none; }
-        table tbody tr:hover { background: rgba(148, 163, 184, 0.05); }
-
-        .badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.25rem;
-            padding: 0.3rem 0.55rem;
-            border-radius: 999px;
-            font-size: 0.82rem;
-            border: 1px solid var(--border);
-            background: rgba(255,255,255,0.04);
-        }
-
-        .badge-success { color: #bbf7d0; border-color: rgba(16,185,129,0.45); }
-        .badge-danger { color: #fecdd3; border-color: rgba(239,68,68,0.45); }
-
-        form { display: grid; gap: 1rem; }
-
-        .form-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
-
-        label { display: block; font-weight: 600; margin-bottom: 0.35rem; }
-
-        input, select { width: 100%; padding: 0.65rem 0.75rem; border-radius: 10px; border: 1px solid var(--border); background: rgba(255,255,255,0.02); color: #e5e7eb; }
-
-        input:focus, select:focus { outline: 2px solid rgba(14,165,233,0.4); border-color: rgba(14,165,233,0.5); }
-
-        .messages { list-style: none; padding: 0; margin: 0 0 1rem; display: grid; gap: 0.5rem; }
-
-        .messages li {
-            padding: 0.75rem 0.85rem;
-            border-radius: 10px;
-            border: 1px solid var(--border);
-            background: rgba(255,255,255,0.04);
-        }
-
-        .messages .success { background: rgba(16, 185, 129, 0.08); color: #bbf7d0; border-color: rgba(16,185,129,0.35); }
-        .messages .error { background: rgba(239, 68, 68, 0.08); color: #fecdd3; border-color: rgba(239,68,68,0.35); }
-
-        .subtle-card {
-            background: rgba(255,255,255,0.03);
-            border: 1px solid var(--border);
-            border-radius: 14px;
-            padding: 1rem;
-            display: grid;
-            gap: 0.35rem;
-        }
-
-        .pill-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-
-        .stat-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin: 1.25rem 0 0.5rem; }
-
-        .stat-card { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 14px; padding: 1.1rem; display: grid; gap: 0.35rem; }
-        .stat-value { font-size: 1.5rem; font-weight: 700; }
-
-        .table-actions { display: flex; gap: 0.5rem; align-items: center; }
 
         @media (max-width: 640px) {
-            header { position: sticky; top: 0; }
-            .nav { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
-            nav { display: flex; flex-wrap: wrap; gap: 0.5rem; width: 100%; }
-            nav a { margin: 0; padding: 0.5rem 0.75rem; background: rgba(148, 163, 184, 0.08); border-radius: 8px; }
-            .panel { padding: 1.1rem; }
-            .pill-actions { width: 100%; justify-content: space-between; }
-            .btn { width: 100%; justify-content: center; }
-            form .pill-actions { flex-direction: column; align-items: stretch; }
-            .table-container { border-radius: 10px; }
-            table { min-width: 100%; }
+            .nav { @apply flex-col items-start gap-3; }
+            nav { @apply flex flex-wrap gap-2 w-full; }
+            nav a { @apply m-0 px-3 py-2 rounded-lg bg-slate-400/10; }
+            .panel { @apply p-4; }
+            .pill-actions { @apply w-full justify-between; }
+            .btn { @apply w-full justify-center; }
+            form .pill-actions { @apply flex-col items-stretch; }
+            .table-container { @apply rounded-lg; }
+            table { @apply min-w-full; }
         }
     </style>
+    <title>{% block title %}Smart Door Control{% endblock %}</title>
 </head>
-<body>
+<body class="bg-[#0f172a]">
 <header>
     <div class="nav">
         <a class="brand" href="/">

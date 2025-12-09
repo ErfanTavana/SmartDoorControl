@@ -34,6 +34,8 @@ ACK_ENDPOINT = "/api/device/command/ack/"
 OTA_ENABLED = True
 OTA_ENDPOINT = "/api/device/firmware/"
 OTA_CHECK_INTERVAL_MS = 300000  # 5 minutes
+FIRMWARE_VERSION = "1.0.0"
+FIRMWARE_VERSION_FILE = "firmware_version.txt"
 WATCHDOG_TIMEOUT_MS = 15000
 RESET_DELAY_MS = 2000
 # HTTP request timeout (in seconds). Increase to allow slower responses before failing.
@@ -66,6 +68,7 @@ STAT_GOT_IP = getattr(network, "STAT_GOT_IP", 5)
 wlan = network.WLAN(network.STA_IF)
 wdt = None
 last_ota_check_ms = 0
+installed_version = "unknown"
 
 
 def setup_wifi(max_attempts=20, retry_delay=500):
@@ -175,6 +178,33 @@ def feed_watchdog():
 
 
 # ========================
+# Firmware version helpers
+# ========================
+
+
+def load_installed_version():
+    """Read the last installed firmware version from disk."""
+    try:
+        with open(FIRMWARE_VERSION_FILE, "r") as fp:
+            version = fp.read().strip()
+            if version:
+                return version
+    except Exception as exc:
+        print("[OTA] Could not read version file:", exc)
+    return FIRMWARE_VERSION
+
+
+def save_installed_version(version):
+    """Persist the installed firmware version to disk."""
+    try:
+        with open(FIRMWARE_VERSION_FILE, "w") as fp:
+            fp.write(str(version))
+        print("[OTA] Installed version recorded:", version)
+    except Exception as exc:
+        print("[OTA] Failed to record version:", exc)
+
+
+# ========================
 # API helpers
 # ========================
 
@@ -256,14 +286,17 @@ def fetch_ota_payload():
             response.close()
 
 
-def apply_ota_update(content):
+def apply_ota_update(content, version):
     """Write new firmware to disk atomically and reboot."""
+    global installed_version
     temp_path = "main.py.new"
     final_path = "main.py"
     try:
         with open(temp_path, "w") as fp:
             fp.write(content)
         os.rename(temp_path, final_path)
+        save_installed_version(version)
+        installed_version = version
         print("[OTA] Update written, rebooting...")
         time.sleep_ms(RESET_DELAY_MS)
         machine.reset()
@@ -277,6 +310,7 @@ def apply_ota_update(content):
 
 def maybe_check_ota(last_check_ms):
     """Poll OTA endpoint periodically for wireless updates."""
+    global installed_version
     if not OTA_ENABLED:
         return last_check_ms
 
@@ -287,8 +321,11 @@ def maybe_check_ota(last_check_ms):
     payload = fetch_ota_payload()
     if payload and payload.get("content"):
         version = payload.get("version", "unknown")
+        if version == installed_version:
+            print("[OTA] Already running version {}, skipping".format(version))
+            return now
         print("[OTA] Update available: version {}".format(version))
-        apply_ota_update(payload["content"])
+        apply_ota_update(payload["content"], version)
     return now
 
 
@@ -310,9 +347,12 @@ def trigger_relay(duration_ms):
 
 def main():
     global last_ota_check_ms
+    global installed_version
 
     init_watchdog()
     setup_wifi()
+    installed_version = load_installed_version()
+    print("[OTA] Installed firmware version:", installed_version)
     last_ota_check_ms = time.ticks_ms()
 
     while True:

@@ -14,6 +14,21 @@ from households.utils import get_or_create_head_household
 from .models import Device, DeviceFirmware, DeviceLog
 
 
+def _sanitize_metadata(value):
+    """Ensure metadata is JSON serializable before storing it."""
+
+    def convert(item):
+        if item is None or isinstance(item, (bool, int, float, str)):
+            return item
+        if isinstance(item, dict):
+            return {str(key): convert(val) for key, val in item.items()}
+        if isinstance(item, (list, tuple, set)):
+            return [convert(val) for val in item]
+        return str(item)
+
+    return convert(value)
+
+
 def _get_device_from_request(request):
     token = request.headers.get("X-DEVICE-TOKEN")
     if not token:
@@ -128,6 +143,7 @@ def ingest_log(request):
     # Enrich logs with server-side context
     metadata.setdefault("remote_addr", request.META.get("REMOTE_ADDR"))
     metadata.setdefault("user_agent", request.META.get("HTTP_USER_AGENT"))
+    metadata = _sanitize_metadata(metadata)
 
     DeviceLog.objects.create(
         device=device,

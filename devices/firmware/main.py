@@ -37,6 +37,7 @@ OTA_ENDPOINT = "/api/device/firmware/"
 OTA_CHECK_INTERVAL_MS = 300000  # 5 minutes
 FIRMWARE_VERSION = "1.0.0"
 FIRMWARE_VERSION_FILE = "firmware_version.txt"
+VERSION_LOG_INTERVAL_MS = 60000  # 1 minute
 WATCHDOG_TIMEOUT_MS = 15000
 RESET_DELAY_MS = 2000
 # HTTP request timeout (in seconds). Increase to allow slower responses before failing.
@@ -70,6 +71,7 @@ wlan = network.WLAN(network.STA_IF)
 wdt = None
 last_ota_check_ms = 0
 installed_version = "unknown"
+last_version_log_ms = 0
 
 
 def setup_wifi(max_attempts=20, retry_delay=500):
@@ -378,6 +380,7 @@ def trigger_relay(duration_ms):
 def main():
     global last_ota_check_ms
     global installed_version
+    global last_version_log_ms
 
     init_watchdog()
     setup_wifi()
@@ -407,6 +410,17 @@ def main():
             print("[Command] No action")
 
         last_ota_check_ms = maybe_check_ota(last_ota_check_ms)
+        now_ms = time.ticks_ms()
+        if (
+            not last_version_log_ms
+            or time.ticks_diff(now_ms, last_version_log_ms) >= VERSION_LOG_INTERVAL_MS
+        ):
+            print(
+                "[System] Running firmware version: {} (file {})".format(
+                    installed_version, FIRMWARE_VERSION_FILE
+                )
+            )
+            last_version_log_ms = now_ms
         feed_watchdog()
         time.sleep_ms(POLL_INTERVAL_MS)
 

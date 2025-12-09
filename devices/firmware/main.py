@@ -383,7 +383,9 @@ def main():
     setup_wifi()
     installed_version = load_installed_version()
     print("[OTA] Installed firmware version:", installed_version)
-    last_ota_check_ms = time.ticks_ms()
+    # Force an OTA check immediately after boot so new firmware is applied
+    # without waiting for the periodic interval.
+    last_ota_check_ms = 0
 
     while True:
         feed_watchdog()

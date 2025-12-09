@@ -32,6 +32,7 @@ RELAY_ACTIVE_LOW = True  # Set to True if the relay is active-low
 POLL_INTERVAL_MS = 5000
 COMMAND_ENDPOINT = "/api/device/command/"
 ACK_ENDPOINT = "/api/device/command/ack/"
+LOG_ENDPOINT = "/api/device/logs/"
 OTA_ENABLED = True
 OTA_ENDPOINT = "/api/device/firmware/"
 OTA_CHECK_INTERVAL_MS = 300000  # 5 minutes
@@ -72,6 +73,7 @@ wdt = None
 last_ota_check_ms = 0
 installed_version = "unknown"
 last_version_log_ms = 0
+boot_log_sent = False
 
 
 def setup_wifi(max_attempts=20, retry_delay=500):
@@ -293,6 +295,32 @@ def send_ack(command_id):
             response.close()
 
 
+def send_log(message, level="info"):
+    """Send a device log message to the server."""
+    url = _build_url(LOG_ENDPOINT)
+    payload = {"message": message, "level": level}
+    response = None
+    print("[Log] Sending {}: {}".format(level.upper(), message))
+    try:
+        response = requests.post(
+            url,
+            headers=_headers(),
+            data=json.dumps(payload),
+            timeout=REQUEST_TIMEOUT_SEC,
+        )
+        if response.status_code != 200:
+            print("[Log] Failed, status:", response.status_code)
+            return False
+        print("[Log] Sent successfully")
+        return True
+    except Exception as exc:
+        print("[Log] Error sending log:", exc)
+        return False
+    finally:
+        if response:
+            response.close()
+
+
 def fetch_ota_payload():
     """Fetch OTA payload describing the new firmware."""
     url = _build_url(OTA_ENDPOINT)
@@ -381,6 +409,7 @@ def main():
     global last_ota_check_ms
     global installed_version
     global last_version_log_ms
+    global boot_log_sent
 
     init_watchdog()
     setup_wifi()
@@ -398,12 +427,25 @@ def main():
             time.sleep_ms(POLL_INTERVAL_MS)
             continue
 
+        if not boot_log_sent:
+            if send_log(
+                "Firmware {} started with IP {}".format(
+                    installed_version, wlan.ifconfig()[0]
+                )
+            ):
+                boot_log_sent = True
+
         command = send_get_command()
         if command and command.get("open"):
             duration = int(command.get("pulse_ms", 1000))
             cmd_id = command.get("command_id")
             print("[Command] Open requested: {} ms, id={}".format(duration, cmd_id))
             trigger_relay(duration)
+            send_log(
+                "Relay triggered for {} ms (command {})".format(
+                    duration, cmd_id if cmd_id is not None else "unknown"
+                )
+            )
             if cmd_id is not None:
                 send_ack(cmd_id)
         else:

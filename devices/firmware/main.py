@@ -59,11 +59,11 @@ CONFIG_VERSION = "1.0.0"
 CONFIG_VERSION_FILE = "config_version.txt"
 CONFIG_CHECKSUM_FILE = "config_checksum.txt"
 VERSION_LOG_INTERVAL_MS = 60000  # 1 minute
-WATCHDOG_TIMEOUT_MS = 15000
+WATCHDOG_TIMEOUT_MS = 30000
 RESET_DELAY_MS = 2000
 # HTTP request timeout (in seconds). Must remain comfortably below WATCHDOG_TIMEOUT_MS
 # because network requests are blocking and the watchdog is only fed between calls.
-REQUEST_TIMEOUT_SEC = 10
+REQUEST_TIMEOUT_SEC = 8
 # Enable the built-in WebREPL server to inspect logs/files over WiFi without USB.
 WEBREPL_ENABLED = True
 WEBREPL_PASSWORD = "smartdoor"
@@ -157,7 +157,7 @@ def _connect_to_network(ssid, password, max_attempts, retry_delay):
         print("[WiFi] Connection start failed:", exc)
         try:
             wlan.active(False)
-            time.sleep_ms(200)
+            safe_sleep_ms(200)
             wlan.active(True)
         except Exception as inner_exc:
             print("[WiFi] Failed to reset interface:", inner_exc)
@@ -165,8 +165,7 @@ def _connect_to_network(ssid, password, max_attempts, retry_delay):
 
     attempts = 0
     while not wlan.isconnected() and attempts < max_attempts:
-        time.sleep_ms(retry_delay)
-        feed_watchdog()
+        safe_sleep_ms(retry_delay)
         attempts += 1
         try:
             status = wlan.status()
@@ -179,7 +178,7 @@ def _connect_to_network(ssid, password, max_attempts, retry_delay):
             )
             try:
                 wlan.active(False)
-                time.sleep_ms(200)
+                safe_sleep_ms(200)
                 wlan.active(True)
             except Exception as inner_exc:
                 print("[WiFi] Failed to reset interface:", inner_exc)
@@ -238,7 +237,7 @@ def wait_for_existing_connection(max_wait_ms=2000, check_interval_ms=200):
             status = None
 
         if status in (STAT_GOT_IP, STAT_CONNECTING, STAT_IDLE):
-            time.sleep_ms(check_interval_ms)
+            safe_sleep_ms(check_interval_ms)
             waited_ms += check_interval_ms
             continue
         break
@@ -300,6 +299,20 @@ def init_watchdog():
 def feed_watchdog():
     if wdt:
         wdt.feed()
+
+
+def safe_sleep_ms(duration_ms, step_ms=250):
+    """Sleep in small chunks so the watchdog continues to be fed."""
+    if duration_ms <= 0:
+        return
+    end_deadline = time.ticks_add(time.ticks_ms(), duration_ms)
+    while True:
+        feed_watchdog()
+        now = time.ticks_ms()
+        if time.ticks_diff(end_deadline, now) <= 0:
+            break
+        sleep_for = min(step_ms, max(0, time.ticks_diff(end_deadline, now)))
+        time.sleep_ms(sleep_for)
 
 
 # ========================
@@ -603,7 +616,7 @@ def apply_ota_update(content, version, checksum=None):
             metadata={"version": version, "checksum": checksum},
         )
         print("[OTA] Update written, rebooting...")
-        time.sleep_ms(RESET_DELAY_MS)
+        safe_sleep_ms(RESET_DELAY_MS)
         machine.reset()
         return True
     except Exception as exc:
@@ -719,7 +732,7 @@ def maybe_check_ota(last_check_ms):
 def trigger_relay(duration_ms):
     print("[Relay] Activating for {} ms".format(duration_ms))
     _relay_on()
-    time.sleep_ms(duration_ms)
+    safe_sleep_ms(duration_ms)
     _relay_off()
     print("[Relay] Deactivated")
 
@@ -750,7 +763,7 @@ def main():
 
         if not ensure_wifi():
             print("[WiFi] Not connected, retrying after delay...")
-            time.sleep_ms(POLL_INTERVAL_MS)
+            safe_sleep_ms(POLL_INTERVAL_MS)
             continue
 
         maybe_start_webrepl()
@@ -797,7 +810,7 @@ def main():
             )
             last_version_log_ms = now_ms
         feed_watchdog()
-        time.sleep_ms(POLL_INTERVAL_MS)
+        safe_sleep_ms(POLL_INTERVAL_MS)
 
 
 if __name__ == "__main__":
@@ -806,5 +819,5 @@ if __name__ == "__main__":
             main()
         except Exception as exc:
             print("[System] Fatal error, resetting:", exc)
-            time.sleep_ms(RESET_DELAY_MS)
+            safe_sleep_ms(RESET_DELAY_MS)
             machine.reset()

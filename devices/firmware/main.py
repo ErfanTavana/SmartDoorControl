@@ -68,6 +68,7 @@ STAT_GOT_IP = getattr(network, "STAT_GOT_IP", 5)
 
 wlan = network.WLAN(network.STA_IF)
 wdt = None
+wdt_timer = None
 last_ota_check_ms = 0
 installed_version = "unknown"
 
@@ -164,10 +165,24 @@ def ensure_wifi():
 
 def init_watchdog():
     """Initialize the hardware watchdog so the board reboots if stuck."""
-    global wdt
+    global wdt, wdt_timer
     try:
         wdt = machine.WDT(timeout=WATCHDOG_TIMEOUT_MS)
-        print("[System] Watchdog enabled ({} ms)".format(WATCHDOG_TIMEOUT_MS))
+        feed_interval = max(1000, WATCHDOG_TIMEOUT_MS // 3)
+        try:
+            # A periodic timer keeps feeding the watchdog even during blocking calls
+            # such as network requests or slow DNS lookups.
+            wdt_timer = machine.Timer(-1)
+            wdt_timer.init(period=feed_interval, mode=machine.Timer.PERIODIC, callback=_watchdog_timer_callback)
+            print(
+                "[System] Watchdog enabled ({} ms) with auto-feed every {} ms".format(
+                    WATCHDOG_TIMEOUT_MS, feed_interval
+                )
+            )
+        except Exception as exc:
+            wdt_timer = None
+            print("[System] Watchdog timer not available:", exc)
+            print("[System] Watchdog enabled ({} ms)".format(WATCHDOG_TIMEOUT_MS))
     except Exception as exc:
         # In case hardware/watchdog not available, continue without it
         print("[System] Watchdog not available:", exc)
@@ -176,6 +191,11 @@ def init_watchdog():
 def feed_watchdog():
     if wdt:
         wdt.feed()
+
+
+def _watchdog_timer_callback(timer):
+    """Timer callback that keeps the watchdog fed during blocking operations."""
+    feed_watchdog()
 
 
 # ========================

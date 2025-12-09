@@ -61,15 +61,20 @@ WEBREPL_PASSWORD = "smartdoor"
 # ========================
 # Hardware setup
 # ========================
-relay_pin = machine.Pin(RELAY_GPIO_PIN, machine.Pin.OUT)
+relay_pin = None
 
 
 def _relay_on():
-    relay_pin.value(0 if RELAY_ACTIVE_LOW else 1)
+    """Activate relay using software open-drain (output low = ON)."""
+    global relay_pin
+    relay_pin = machine.Pin(RELAY_GPIO_PIN, machine.Pin.OUT)
+    relay_pin.value(0)
 
 
 def _relay_off():
-    relay_pin.value(1 if RELAY_ACTIVE_LOW else 0)
+    """Deactivate relay by floating the pin (input/high-Z = OFF)."""
+    global relay_pin
+    relay_pin = machine.Pin(RELAY_GPIO_PIN, machine.Pin.IN)
 
 
 # Initialize relay to off state

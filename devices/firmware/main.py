@@ -105,6 +105,7 @@ installed_config_version = "unknown"
 last_version_log_ms = 0
 boot_log_sent = False
 webrepl_started = False
+boot_time_ms = time.ticks_ms()
 
 
 def _decode_ssid(raw_ssid):
@@ -469,10 +470,60 @@ def send_ack(command_id):
             response.close()
 
 
-def send_log(message, level="info"):
+def _uptime_seconds():
+    try:
+        return int(time.ticks_diff(time.ticks_ms(), boot_time_ms) / 1000)
+    except Exception:
+        return 0
+
+
+def _wifi_snapshot():
+    info = {"connected": False}
+    try:
+        info["connected"] = wlan.isconnected()
+    except Exception:
+        pass
+    try:
+        info["ip"] = wlan.ifconfig()[0]
+    except Exception:
+        pass
+    try:
+        info["rssi"] = wlan.status("rssi")
+    except Exception:
+        pass
+    try:
+        ssid = wlan.config("essid")
+        if isinstance(ssid, bytes):
+            ssid = ssid.decode()
+        info["ssid"] = ssid
+    except Exception:
+        pass
+    return info
+
+
+def _build_metadata(extra=None):
+    metadata = {
+        "uptime_seconds": _uptime_seconds(),
+        "wifi": _wifi_snapshot(),
+        "config_version": installed_config_version,
+    }
+    if isinstance(extra, dict):
+        metadata.update(extra)
+    elif extra is not None:
+        metadata["detail"] = extra
+    return metadata
+
+
+def send_log(message, level="info", event_type="general", metadata=None):
     """Send a device log message to the server."""
     url = _build_url(LOG_ENDPOINT)
-    payload = {"message": message, "level": level}
+    payload = {
+        "message": message,
+        "level": level,
+        "event_type": event_type,
+        "firmware_version": installed_version,
+        "metadata": _build_metadata(metadata),
+    }
     response = None
     print("[Log] Sending {}: {}".format(level.upper(), message))
     try:
@@ -532,6 +583,8 @@ def apply_ota_update(content, version, checksum=None):
         send_log(
             "OTA firmware checksum mismatch for version {}".format(version),
             level="error",
+            event_type="ota",
+            metadata={"version": version, "checksum": checksum},
         )
         return False
 
@@ -544,14 +597,23 @@ def apply_ota_update(content, version, checksum=None):
         save_installed_version(version)
         save_checksum(FIRMWARE_CHECKSUM_FILE, checksum)
         installed_version = version
-        send_log("Firmware {} installed via OTA".format(version))
+        send_log(
+            "Firmware {} installed via OTA".format(version),
+            event_type="ota",
+            metadata={"version": version, "checksum": checksum},
+        )
         print("[OTA] Update written, rebooting...")
         time.sleep_ms(RESET_DELAY_MS)
         machine.reset()
         return True
     except Exception as exc:
         print("[OTA] Failed to apply update:", exc)
-        send_log("OTA apply failed for version {}".format(version), level="error")
+        send_log(
+            "OTA apply failed for version {}".format(version),
+            level="error",
+            event_type="ota",
+            metadata={"version": version, "checksum": checksum},
+        )
         try:
             os.remove(temp_path)
         except Exception:
@@ -573,6 +635,8 @@ def apply_config_update(content, version, checksum=None):
         send_log(
             "OTA config checksum mismatch for version {}".format(version),
             level="error",
+            event_type="config",
+            metadata={"version": version, "checksum": checksum},
         )
         return False
 
@@ -582,12 +646,21 @@ def apply_config_update(content, version, checksum=None):
         save_installed_config_version(version)
         save_checksum(CONFIG_CHECKSUM_FILE, checksum)
         installed_config_version = version
-        send_log("Config {} applied via OTA".format(version))
+        send_log(
+            "Config {} applied via OTA".format(version),
+            event_type="config",
+            metadata={"version": version, "checksum": checksum},
+        )
         print("[OTA] Configuration updated to {}".format(version))
         return True
     except Exception as exc:
         print("[OTA] Failed to apply configuration:", exc)
-        send_log("OTA config apply failed for {}".format(version), level="error")
+        send_log(
+            "OTA config apply failed for {}".format(version),
+            level="error",
+            event_type="config",
+            metadata={"version": version, "checksum": checksum},
+        )
     return False
 
 
@@ -618,6 +691,11 @@ def maybe_check_ota(last_check_ms):
             print("[OTA] Already running version {}, skipping".format(firmware_version))
         else:
             print("[OTA] Update available: version {}".format(firmware_version))
+            send_log(
+                "OTA firmware available ({})".format(firmware_version),
+                event_type="ota",
+                metadata={"version": firmware_version},
+            )
             apply_ota_update(firmware_content, firmware_version, firmware_checksum)
 
     if config_content:
@@ -681,7 +759,9 @@ def main():
             if send_log(
                 "Firmware {} (config {}) started with IP {}".format(
                     installed_version, installed_config_version, wlan.ifconfig()[0]
-                )
+                ),
+                event_type="boot",
+                metadata={"ip": wlan.ifconfig()[0]},
             ):
                 boot_log_sent = True
 
@@ -694,7 +774,9 @@ def main():
             send_log(
                 "Relay triggered for {} ms (command {})".format(
                     duration, cmd_id if cmd_id is not None else "unknown"
-                )
+                ),
+                event_type="command",
+                metadata={"duration_ms": duration, "command_id": cmd_id},
             )
             if cmd_id is not None:
                 send_ack(cmd_id)
@@ -707,10 +789,11 @@ def main():
             not last_version_log_ms
             or time.ticks_diff(now_ms, last_version_log_ms) >= VERSION_LOG_INTERVAL_MS
         ):
-            print(
-                "[System] Running firmware {}, config {}".format(
+            send_log(
+                "Running firmware {} (config {})".format(
                     installed_version, installed_config_version
-                )
+                ),
+                event_type="heartbeat",
             )
             last_version_log_ms = now_ms
         feed_watchdog()

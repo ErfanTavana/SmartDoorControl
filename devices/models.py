@@ -66,7 +66,10 @@ class DeviceLog(models.Model):
         Device, on_delete=models.CASCADE, related_name="logs"
     )
     level = models.CharField(max_length=20, blank=True)
+    event_type = models.CharField(max_length=50, blank=True, default="")
     message = models.TextField()
+    firmware_version = models.CharField(max_length=50, blank=True, default="")
+    metadata = models.JSONField(blank=True, default=dict)
     created_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
@@ -74,4 +77,5 @@ class DeviceLog(models.Model):
 
     def __str__(self) -> str:
         level = self.level or "log"
-        return f"{level.upper()} for {self.device}"
+        event = f" ({self.event_type})" if self.event_type else ""
+        return f"{level.upper()}{event} for {self.device}"

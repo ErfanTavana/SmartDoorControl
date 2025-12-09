@@ -6,6 +6,7 @@ from django.shortcuts import render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
+from django.db.models import Count
 
 from access.models import DoorCommand
 from accounts.decorators import head_required
@@ -113,25 +114,54 @@ def ingest_log(request):
         payload = {}
 
     message = payload.get("message") or payload.get("log")
-    level = payload.get("level", "info")
+    level = (payload.get("level") or "info").lower()
+    event_type = payload.get("event_type") or payload.get("type") or ""
+    firmware_version = payload.get("firmware_version") or payload.get("version") or ""
+    metadata = payload.get("metadata") or {}
 
     if not message:
         return JsonResponse({"error": "Missing log message"}, status=400)
 
-    DeviceLog.objects.create(device=device, level=level, message=message)
+    if not isinstance(metadata, dict):
+        metadata = {"value": metadata}
+
+    # Enrich logs with server-side context
+    metadata.setdefault("remote_addr", request.META.get("REMOTE_ADDR"))
+    metadata.setdefault("user_agent", request.META.get("HTTP_USER_AGENT"))
+
+    DeviceLog.objects.create(
+        device=device,
+        level=level,
+        event_type=event_type,
+        firmware_version=firmware_version,
+        metadata=metadata,
+        message=message,
+    )
+
+    device.last_seen = timezone.now()
+    device.save(update_fields=["last_seen"])
     return JsonResponse({"status": "ok"})
 
 
 @head_required
 def device_logs(request):
     household = get_or_create_head_household(request.user)
-    logs = (
-        DeviceLog.objects.filter(device__building=household.building)
-        .select_related("device")
-        .order_by("-created_at")[:100]
+    queryset = DeviceLog.objects.filter(device__building=household.building)
+    logs = queryset.select_related("device").order_by("-created_at")[:200]
+
+    level_breakdown = (
+        queryset.values("level").annotate(count=Count("id")).order_by("level")
+    )
+    event_breakdown = (
+        queryset.values("event_type").annotate(count=Count("id")).order_by("event_type")
     )
     return render(
         request,
         "devices/device_logs.html",
-        {"household": household, "logs": logs},
+        {
+            "household": household,
+            "logs": logs,
+            "level_breakdown": level_breakdown,
+            "event_breakdown": event_breakdown,
+        },
     )

@@ -4,28 +4,15 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from accounts.decorators import head_required
 from .forms import MemberCreationForm, MemberProfileForm
-from .models import Building, Household, MemberProfile
+from .models import Household, MemberProfile
+from .utils import get_or_create_head_household
 
 User = get_user_model()
 
 
-def _get_head_household(user):
-    household, created = Household.objects.get_or_create(
-        head=user,
-        defaults={
-            "title": f"{user.username}'s Home",
-            "building": Building.objects.create(title=f"{user.username}'s Building"),
-        },
-    )
-    if created and household.building is None:
-        household.building = Building.objects.create(title=f"{user.username}'s Building")
-        household.save(update_fields=["building"])
-    return household
-
-
 @head_required
 def head_dashboard(request):
-    household = _get_head_household(request.user)
+    household = get_or_create_head_household(request.user)
     member_count = household.members.count()
     device_count = household.building.devices.count()
     return render(
@@ -37,14 +24,14 @@ def head_dashboard(request):
 
 @head_required
 def member_list(request):
-    household = _get_head_household(request.user)
+    household = get_or_create_head_household(request.user)
     members = household.members.select_related("user").all()
     return render(request, "households/member_list.html", {"household": household, "members": members})
 
 
 @head_required
 def member_create(request):
-    household = _get_head_household(request.user)
+    household = get_or_create_head_household(request.user)
     form = MemberCreationForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         form.save(household)
@@ -55,7 +42,7 @@ def member_create(request):
 
 @head_required
 def member_edit(request, member_id):
-    household = _get_head_household(request.user)
+    household = get_or_create_head_household(request.user)
     profile = get_object_or_404(MemberProfile, id=member_id, household=household)
     form = MemberProfileForm(request.POST or None, instance=profile)
     if request.method == "POST" and form.is_valid():
@@ -67,7 +54,7 @@ def member_edit(request, member_id):
 
 @head_required
 def member_delete(request, member_id):
-    household = _get_head_household(request.user)
+    household = get_or_create_head_household(request.user)
     profile = get_object_or_404(MemberProfile, id=member_id, household=household)
     user = profile.user
     profile.delete()

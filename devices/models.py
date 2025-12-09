@@ -16,12 +16,16 @@ def generate_api_token() -> str:
 
 class Device(models.Model):
     building = models.ForeignKey(
-        Building, on_delete=models.CASCADE, related_name="devices"
+        Building, on_delete=models.CASCADE, related_name="devices", verbose_name="ساختمان"
     )
     api_token = models.CharField(
-        max_length=255, unique=True, editable=False, default=generate_api_token
+        max_length=255,
+        unique=True,
+        editable=False,
+        default=generate_api_token,
+        verbose_name="توکن API",
     )
-    last_seen = models.DateTimeField(null=True, blank=True)
+    last_seen = models.DateTimeField(null=True, blank=True, verbose_name="آخرین مشاهده")
 
     def __str__(self) -> str:
         return f"Device {self.id} for {self.building}"
@@ -29,15 +33,19 @@ class Device(models.Model):
 
 class DeviceFirmware(models.Model):
     device = models.OneToOneField(
-        Device, on_delete=models.CASCADE, related_name="firmware"
+        Device, on_delete=models.CASCADE, related_name="firmware", verbose_name="دستگاه"
     )
-    version = models.CharField(max_length=50)
-    content = models.TextField()
-    checksum = models.CharField(max_length=64, blank=True)
-    config = models.TextField(blank=True, default="")
-    config_version = models.CharField(max_length=50, blank=True, default="")
-    config_checksum = models.CharField(max_length=64, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    version = models.CharField(max_length=50, verbose_name="نسخه")
+    content = models.TextField(verbose_name="محتوا")
+    checksum = models.CharField(max_length=64, blank=True, verbose_name="چک‌سام")
+    config = models.TextField(blank=True, default="", verbose_name="پیکربندی")
+    config_version = models.CharField(
+        max_length=50, blank=True, default="", verbose_name="نسخه پیکربندی"
+    )
+    config_checksum = models.CharField(
+        max_length=64, blank=True, verbose_name="چک‌سام پیکربندی"
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="زمان ایجاد")
 
     class Meta:
         ordering = ["-created_at"]
@@ -63,14 +71,20 @@ class DeviceFirmware(models.Model):
 
 class DeviceLog(models.Model):
     device = models.ForeignKey(
-        Device, on_delete=models.CASCADE, related_name="logs"
+        Device, on_delete=models.CASCADE, related_name="logs", verbose_name="دستگاه"
     )
-    level = models.CharField(max_length=20, blank=True)
-    event_type = models.CharField(max_length=50, blank=True, default="")
-    message = models.TextField()
-    firmware_version = models.CharField(max_length=50, blank=True, default="")
-    metadata = models.JSONField(blank=True, default=dict)
-    created_at = models.DateTimeField(default=timezone.now)
+    level = models.CharField(max_length=20, blank=True, verbose_name="سطح")
+    event_type = models.CharField(
+        max_length=50, blank=True, default="", verbose_name="نوع رویداد"
+    )
+    message = models.TextField(verbose_name="پیام")
+    firmware_version = models.CharField(
+        max_length=50, blank=True, default="", verbose_name="نسخه میان‌افزار"
+    )
+    metadata = models.JSONField(blank=True, default=dict, verbose_name="متادیتا")
+    created_at = models.DateTimeField(
+        default=timezone.now, verbose_name="زمان ایجاد"
+    )
 
     class Meta:
         ordering = ["-created_at"]

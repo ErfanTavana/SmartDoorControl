@@ -8,6 +8,7 @@ Features:
 - Safe error handling for network and API issues.
 """
 
+import errno
 import json
 import os
 import time
@@ -189,6 +190,19 @@ def load_installed_version():
             version = fp.read().strip()
             if version:
                 return version
+        print("[OTA] Version file empty, falling back to default")
+        save_installed_version(FIRMWARE_VERSION)
+        return FIRMWARE_VERSION
+    except OSError as exc:
+        if exc.errno == errno.ENOENT:
+            print(
+                "[OTA] Version file missing, seeding default {}".format(
+                    FIRMWARE_VERSION
+                )
+            )
+            save_installed_version(FIRMWARE_VERSION)
+            return FIRMWARE_VERSION
+        print("[OTA] Could not read version file:", exc)
     except Exception as exc:
         print("[OTA] Could not read version file:", exc)
     return FIRMWARE_VERSION

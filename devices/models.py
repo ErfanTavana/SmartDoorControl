@@ -1,3 +1,4 @@
+import hashlib
 import secrets
 
 from django.db import models
@@ -32,6 +33,10 @@ class DeviceFirmware(models.Model):
     )
     version = models.CharField(max_length=50)
     content = models.TextField()
+    checksum = models.CharField(max_length=64, blank=True)
+    config = models.TextField(blank=True, default="")
+    config_version = models.CharField(max_length=50, blank=True, default="")
+    config_checksum = models.CharField(max_length=64, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -39,6 +44,21 @@ class DeviceFirmware(models.Model):
 
     def __str__(self) -> str:
         return f"Firmware {self.version} for {self.device}"
+
+    def save(self, *args, **kwargs):
+        if self.content:
+            self.checksum = hashlib.sha256(self.content.encode("utf-8")).hexdigest()
+        else:
+            self.checksum = ""
+
+        if self.config:
+            self.config_checksum = hashlib.sha256(
+                self.config.encode("utf-8")
+            ).hexdigest()
+        else:
+            self.config_checksum = ""
+
+        super().save(*args, **kwargs)
 
 
 class DeviceLog(models.Model):

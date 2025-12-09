@@ -50,8 +50,9 @@ FIRMWARE_VERSION_FILE = "firmware_version.txt"
 VERSION_LOG_INTERVAL_MS = 60000  # 1 minute
 WATCHDOG_TIMEOUT_MS = 15000
 RESET_DELAY_MS = 2000
-# HTTP request timeout (in seconds). Increase to allow slower responses before failing.
-REQUEST_TIMEOUT_SEC = 15
+# HTTP request timeout (in seconds). Must remain comfortably below WATCHDOG_TIMEOUT_MS
+# because network requests are blocking and the watchdog is only fed between calls.
+REQUEST_TIMEOUT_SEC = 10
 # Enable the built-in WebREPL server to inspect logs/files over WiFi without USB.
 WEBREPL_ENABLED = True
 WEBREPL_PASSWORD = "smartdoor"
@@ -356,6 +357,7 @@ def send_get_command():
     print("[API] Polling:", url)
     response = None
     try:
+        feed_watchdog()
         response = requests.get(
             url, headers=_headers(), timeout=REQUEST_TIMEOUT_SEC
         )
@@ -369,6 +371,7 @@ def send_get_command():
         print("[API] GET failed:", exc)
         return None
     finally:
+        feed_watchdog()
         if response:
             response.close()
 
@@ -379,6 +382,7 @@ def send_ack(command_id):
     print("[API] Sending ACK for command {}".format(command_id))
     response = None
     try:
+        feed_watchdog()
         response = requests.post(
             url,
             headers=_headers(),
@@ -392,6 +396,7 @@ def send_ack(command_id):
     except Exception as exc:
         print("[API] ACK error:", exc)
     finally:
+        feed_watchdog()
         if response:
             response.close()
 
@@ -403,6 +408,7 @@ def send_log(message, level="info"):
     response = None
     print("[Log] Sending {}: {}".format(level.upper(), message))
     try:
+        feed_watchdog()
         response = requests.post(
             url,
             headers=_headers(),
@@ -418,6 +424,7 @@ def send_log(message, level="info"):
         print("[Log] Error sending log:", exc)
         return False
     finally:
+        feed_watchdog()
         if response:
             response.close()
 
@@ -428,6 +435,7 @@ def fetch_ota_payload():
     print("[OTA] Checking for updates at:", url)
     response = None
     try:
+        feed_watchdog()
         response = requests.get(
             url, headers=_headers(), timeout=REQUEST_TIMEOUT_SEC
         )
@@ -443,6 +451,7 @@ def fetch_ota_payload():
         print("[OTA] Check failed:", exc)
         return None
     finally:
+        feed_watchdog()
         if response:
             response.close()
 

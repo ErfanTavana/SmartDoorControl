@@ -2,26 +2,37 @@
 {% block title %}Member Form{% endblock %}
 {% block content %}
 <div class="stack">
-    <div class="pill-actions">
-        <h1>{% if editing %}ویرایش عضو{% else %}افزودن عضو{% endif %}</h1>
+    <div class="pill-actions justify-between">
+        <div>
+            <span class="chip chip-glow">اطلاعات عضو</span>
+            <h2 class="mt-1">{% if editing %}ویرایش عضو{% else %}افزودن عضو{% endif %}</h2>
+            <p class="muted">بازه دسترسی، وضعیت فعال و مشخصات هر کاربر را با رابط جدید تنظیم کنید.</p>
+        </div>
         <a class="btn btn-secondary" href="{% url 'households:member_list' %}">بازگشت به لیست</a>
     </div>
 
-    <form method="post">
-        {% csrf_token %}
-        {{ form.non_field_errors }}
-        <div class="form-grid">
-            {% for field in form %}
-                <div>
-                    <label>{{ field.label }}</label>
-                    {{ field }}
-                    {% for error in field.errors %}<div class="badge badge-danger">{{ error }}</div>{% endfor %}
-                </div>
-            {% endfor %}
-        </div>
+    <div class="card space-y-5">
         <div class="pill-actions">
-            <button class="btn" type="submit">ذخیره</button>
+            <span class="badge badge-info">ویرایش زنده</span>
+            <span class="note">تغییرات پس از ذخیره اعمال می‌شوند.</span>
         </div>
-    </form>
+        <form class="stack" method="post">
+            {% csrf_token %}
+            {{ form.non_field_errors }}
+            <div class="form-grid">
+                {% for field in form %}
+                    <div class="space-y-2">
+                        <label>{{ field.label }}</label>
+                        {{ field }}
+                        {% for error in field.errors %}<div class="badge badge-danger">{{ error }}</div>{% endfor %}
+                    </div>
+                {% endfor %}
+            </div>
+            <div class="pill-actions justify-between">
+                <p class="note">برای اعمال تنظیمات جدید، روی ذخیره کلیک کنید.</p>
+                <button class="btn" type="submit">ذخیره</button>
+            </div>
+        </form>
+    </div>
 </div>
 {% endblock %}

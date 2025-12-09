@@ -2,25 +2,60 @@
 {% block title %}Login{% endblock %}
 {% block content %}
 <div class="stack">
-    <div class="stack">
-        <h1>ورود</h1>
-        <form method="post">
-            {% csrf_token %}
-            {{ form.non_field_errors }}
-            <div class="form-grid">
-                <div>
-                    <label for="id_username">نام کاربری</label>
-                    {{ form.username }}
-                </div>
-                <div>
-                    <label for="id_password">رمز عبور</label>
-                    {{ form.password }}
-                </div>
-            </div>
+    <div class="card-grid">
+        <div class="card space-y-4">
             <div class="pill-actions">
-                <button class="btn" type="submit">ورود به حساب</button>
+                <span class="chip chip-glow">ورود ایمن</span>
+                <span class="badge badge-info">SmartDoorControl</span>
             </div>
-        </form>
+            <h2>با چند کلیک وارد مرکز کنترل شوید</h2>
+            <p class="muted">اطلاعات ورود شما به صورت رمزگذاری‌شده ارسال می‌شود و پس از ورود می‌توانید دسترسی درب و اعضا را از هر دستگاهی مدیریت کنید.</p>
+            <div class="stat-grid">
+                <div class="stat-card">
+                    <span class="muted">امنیت</span>
+                    <span class="stat-value">TLS</span>
+                    <span class="muted text-sm">ارتباط رمزگذاری‌شده</span>
+                </div>
+                <div class="stat-card">
+                    <span class="muted">پشتیبانی</span>
+                    <span class="stat-value">24/7</span>
+                    <span class="muted text-sm">مناسب ساختمان‌های فعال</span>
+                </div>
+            </div>
+            <div class="info-strip">
+                <span class="chip chip-ghost">واکنش‌گرا</span>
+                <span class="chip chip-ghost">داشبورد به‌روز</span>
+                <span class="chip chip-ghost">تجربه سریع</span>
+            </div>
+        </div>
+
+        <div class="card space-y-6">
+            <div class="pill-actions">
+                <div>
+                    <p class="chip chip-ghost">حساب کاربری</p>
+                    <h2 class="mt-2">ورود به SmartDoorControl</h2>
+                    <p class="muted text-sm">برای ادامه نام کاربری و رمز عبور خود را وارد کنید.</p>
+                </div>
+            </div>
+            <form class="stack" method="post">
+                {% csrf_token %}
+                {{ form.non_field_errors }}
+                <div class="form-grid">
+                    <div class="space-y-2">
+                        <label for="id_username">نام کاربری</label>
+                        {{ form.username }}
+                    </div>
+                    <div class="space-y-2">
+                        <label for="id_password">رمز عبور</label>
+                        {{ form.password }}
+                    </div>
+                </div>
+                <div class="pill-actions justify-between">
+                    <p class="note">اگر عضو جدید هستید، از مدیر ساختمان دعوت‌نامه دریافت کنید.</p>
+                    <button class="btn" type="submit">ورود به حساب</button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 {% endblock %}

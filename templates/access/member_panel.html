@@ -2,41 +2,58 @@
 {% block title %}Door Control{% endblock %}
 {% block content %}
 <div class="stack">
-    <div class="stack">
-        <div class="pill-actions">
-            <h1>کنترل درب</h1>
-            {% if household %}
-                <span class="badge">{{ household.title }}</span>
-            {% endif %}
+    <div class="pill-actions justify-between">
+        <div class="space-y-1">
+            <span class="chip chip-glow">کنترل درب</span>
+            <h2>کنترل سریع ورودی ساختمان</h2>
+            <p class="muted">دسترسی لحظه‌ای به قفل هوشمند و وضعیت دسترسی اعضا، با طراحی تازه و پویا.</p>
         </div>
-
         {% if household %}
-            <div class="stat-grid">
-                <div class="stat-card">
-                    <span class="muted">وضعیت دسترسی</span>
-                    <span class="badge {% if member_profile and member_profile.active %}badge-success{% else %}badge-danger{% endif %}">
-                        {% if member_profile and member_profile.active %}فعال{% else %}غیرفعال{% endif %}
-                    </span>
-                </div>
-                <div class="stat-card">
-                    <span class="muted">بازه مجاز</span>
-                    {% if member_profile %}
-                        <span class="stat-value">{{ member_profile.allowed_from_time }} - {{ member_profile.allowed_to_time }}</span>
-                    {% else %}
-                        <span class="stat-value muted">تنظیم نشده</span>
-                    {% endif %}
-                </div>
-            </div>
-
-            <form method="post">
-                {% csrf_token %}
-                <button class="btn" type="submit">باز کردن درب</button>
-            </form>
-        {% else %}
-            <div class="subtle-card">
-                <p class="muted">هنوز خانواری برای شما ثبت نشده است.</p>
-            </div>
+            <span class="badge badge-info">{{ household.title }}</span>
         {% endif %}
     </div>
+
+    {% if household %}
+        <div class="stat-grid">
+            <div class="stat-card">
+                <span class="muted">وضعیت دسترسی</span>
+                <span class="badge {% if member_profile and member_profile.active %}badge-success{% else %}badge-danger{% endif %}">
+                    {% if member_profile and member_profile.active %}فعال{% else %}غیرفعال{% endif %}
+                </span>
+                <p class="note">مجوزهای شما همیشه به‌روز است.</p>
+            </div>
+            <div class="stat-card">
+                <span class="muted">بازه مجاز</span>
+                {% if member_profile %}
+                    <span class="stat-value">{{ member_profile.allowed_from_time }} - {{ member_profile.allowed_to_time }}</span>
+                {% else %}
+                    <span class="stat-value muted">تنظیم نشده</span>
+                {% endif %}
+                <p class="note">پس از پایان بازه، دسترسی نیاز به تمدید دارد.</p>
+            </div>
+        </div>
+
+        <div class="card space-y-4">
+            <div class="pill-actions justify-between">
+                <div>
+                    <p class="chip chip-ghost">کنترل لحظه‌ای</p>
+                    <h2 class="mt-1">باز کردن درب</h2>
+                </div>
+                <span class="badge">از هر کجا</span>
+            </div>
+            <p class="muted">دکمه زیر با انیمیشن نرم و بدون نیاز به تازه‌سازی صفحه، فرمان باز شدن درب را ارسال می‌کند.</p>
+            <form class="pill-actions" method="post">
+                {% csrf_token %}
+                <button class="btn" type="submit">باز کردن درب</button>
+                <span class="note">اتصال رمزگذاری شده</span>
+            </form>
+        </div>
+    {% else %}
+        <div class="card space-y-3">
+            <p class="chip chip-ghost inline-flex">بدون خانوار</p>
+            <h2>برای شروع، عضو یک خانوار شوید</h2>
+            <p class="muted">هنوز خانواری برای شما ثبت نشده است. با مدیر ساختمان تماس بگیرید تا به لیست اعضا افزوده شوید.</p>
+        </div>
+    {% endif %}
 </div>
 {% endblock %}

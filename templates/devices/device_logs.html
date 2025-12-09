@@ -6,13 +6,38 @@
         <h1>گزارش لاگ‌های دستگاه</h1>
         <span class="badge">{{ household.title }}</span>
     </div>
+    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+        <div class="card">
+            <h3>آمار سطح لاگ</h3>
+            <ul>
+                {% for row in level_breakdown %}
+                    <li><strong>{{ row.level|default:"info"|upper }}</strong>: {{ row.count }}</li>
+                {% empty %}
+                    <li>داده‌ای وجود ندارد.</li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="card">
+            <h3>رویدادها</h3>
+            <ul>
+                {% for row in event_breakdown %}
+                    <li><strong>{{ row.event_type|default:"عمومی" }}</strong>: {{ row.count }}</li>
+                {% empty %}
+                    <li>داده‌ای وجود ندارد.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
     <div class="table-container">
         <table>
             <thead>
                 <tr>
                     <th>دستگاه</th>
                     <th>سطح</th>
+                    <th>نوع</th>
+                    <th>نسخه</th>
                     <th>پیام</th>
+                    <th>جزئیات</th>
                     <th>زمان</th>
                 </tr>
             </thead>
@@ -21,11 +46,14 @@
                     <tr>
                         <td>{{ log.device }}</td>
                         <td><span class="badge">{{ log.level|default:"INFO" }}</span></td>
+                        <td>{{ log.event_type|default:"عمومی" }}</td>
+                        <td>{{ log.firmware_version|default:"" }}</td>
                         <td>{{ log.message }}</td>
+                        <td><pre style="white-space: pre-wrap; max-width: 320px;">{{ log.metadata|default:"-" }}</pre></td>
                         <td>{{ log.created_at }}</td>
                     </tr>
                 {% empty %}
-                    <tr><td colspan="4">لاگی برای نمایش وجود ندارد.</td></tr>
+                    <tr><td colspan="7">لاگی برای نمایش وجود ندارد.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

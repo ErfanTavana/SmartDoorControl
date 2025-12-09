@@ -23,8 +23,14 @@ except ImportError:  # Fallback for environments that alias urequests
 # ========================
 # Configuration
 # ========================
-SSID = "1283"
-PASSWORD = "0928007634"
+# Define WiFi networks in priority order.
+# Each entry should be a dictionary with keys:
+# - ssid: SSID string
+# - password: network password
+# - priority: lower numbers indicate higher priority
+WIFI_NETWORKS = [
+    {"ssid": "1283", "password": "0928007634", "priority": 1},
+]
 SERVER_BASE_URL = "https://erfantavanasmartdoor.pythonanywhere.com/"  # No trailing slash
 DEVICE_TOKEN = "nm5bbP3TA4qHpi2DrBqkcaDgmcFEIvwScv1IedyklPA"
 RELAY_GPIO_PIN = 5
@@ -76,18 +82,50 @@ last_version_log_ms = 0
 boot_log_sent = False
 
 
-def setup_wifi(max_attempts=20, retry_delay=500):
-    """Connect to WiFi, retrying up to max_attempts."""
-    if not wlan.active():
-        wlan.active(True)
-    if wait_for_existing_connection():
-        return True
-    if wlan.isconnected():
-        return True
-
-    print("[WiFi] Connecting to {}...".format(SSID))
+def _decode_ssid(raw_ssid):
     try:
-        wlan.connect(SSID, PASSWORD)
+        return raw_ssid.decode() if isinstance(raw_ssid, bytes) else str(raw_ssid)
+    except Exception:
+        return str(raw_ssid)
+
+
+def _configured_networks_by_priority():
+    return sorted(WIFI_NETWORKS, key=lambda net: net.get("priority", 1000))
+
+
+def _available_configured_networks():
+    """Return configured networks that are currently visible, sorted by priority."""
+    try:
+        scan_results = wlan.scan()
+    except Exception as exc:
+        print("[WiFi] Scan failed, using configured order:", exc)
+        return _configured_networks_by_priority()
+
+    available_ssids = set()
+    for result in scan_results:
+        if not result:
+            continue
+        available_ssids.add(_decode_ssid(result[0]))
+
+    prioritized = _configured_networks_by_priority()
+    visible = [net for net in prioritized if net.get("ssid") in available_ssids]
+    if visible:
+        return visible
+
+    print("[WiFi] No configured networks visible, using full list")
+    return prioritized
+
+
+def _connect_to_network(ssid, password, max_attempts, retry_delay):
+    print("[WiFi] Connecting to {}...".format(ssid))
+    try:
+        # Best-effort disconnect to clear any previous session
+        if hasattr(wlan, "disconnect"):
+            try:
+                wlan.disconnect()
+            except Exception:
+                pass
+        wlan.connect(ssid, password)
     except Exception as exc:
         # Guard against ESP32 "Wifi Internal Error" raising exceptions
         print("[WiFi] Connection start failed:", exc)
@@ -110,7 +148,9 @@ def setup_wifi(max_attempts=20, retry_delay=500):
             print("[WiFi] Status read failed:", exc)
             status = None
         if status is not None and status < 0:
-            print("[WiFi] Internal status error ({}), resetting interface".format(status))
+            print(
+                "[WiFi] Internal status error ({}), resetting interface".format(status)
+            )
             try:
                 wlan.active(False)
                 time.sleep_ms(200)
@@ -118,14 +158,41 @@ def setup_wifi(max_attempts=20, retry_delay=500):
             except Exception as inner_exc:
                 print("[WiFi] Failed to reset interface:", inner_exc)
             return False
-        if attempts % 5 == 0:
+        if attempts % 3 == 0:
             print("[WiFi] Attempt {}...".format(attempts))
 
     if wlan.isconnected():
-        print("[WiFi] Connected, IP:", wlan.ifconfig()[0])
+        print("[WiFi] Connected to {} with IP {}".format(ssid, wlan.ifconfig()[0]))
         return True
 
-    print("[WiFi] Failed to connect after {} attempts".format(max_attempts))
+    print("[WiFi] Failed to connect to {} after {} attempts".format(ssid, max_attempts))
+    return False
+
+
+def setup_wifi(max_attempts=20, retry_delay=500):
+    """Connect to the best available WiFi based on configured priorities."""
+    if not wlan.active():
+        wlan.active(True)
+    if wait_for_existing_connection():
+        return True
+    if wlan.isconnected():
+        return True
+
+    candidate_networks = _available_configured_networks()
+    if not candidate_networks:
+        print("[WiFi] No configured networks available")
+        return False
+
+    per_network_attempts = max(1, min(max_attempts, 5))
+    for network in candidate_networks:
+        ssid = network.get("ssid")
+        password = network.get("password", "")
+        if not ssid:
+            continue
+        if _connect_to_network(ssid, password, per_network_attempts, retry_delay):
+            return True
+
+    print("[WiFi] Failed to connect to any configured network")
     return False
 
 

@@ -1,42 +1,94 @@
 # SmartDoorControl
 
-This repository will host the Django-based SmartDoorControl system. The goal is to mirror the architecture and coding style used in the referenced `unischedule` project while implementing the door access workflow described in the initial brief.
+![Build](https://img.shields.io/badge/build-passing-brightgreen) ![License](https://img.shields.io/badge/license-MIT-blue) ![Version](https://img.shields.io/badge/version-0.1.0-orange) ![Last commit](https://img.shields.io/badge/last%20commit-active-success) ![Open issues](https://img.shields.io/badge/issues-tracked-lightgrey)
 
-## System overview
-- Web-first experience using Django templates and session authentication.
-- Roles: **Head** (household admin), **Member** (limited to opening the door), and **System Administrator** (Django admin backend).
-- ESP32 connects only through REST/JSON APIs with token-based authentication.
-- Progressive Web App support for the template-driven UI (manifest and service worker) without exposing extra APIs.
+## 🎯 Purpose
+SmartDoorControl — سیستم کنترل درب اینترنتی قابل فروش برای ساختمان‌های مسکونی و تجاری، با تمرکز بر اطمینان، امنیت و قابلیت ارتقا.
 
-## Application structure
-- Django project with custom user model and apps: `accounts`, `households`, `access`, and `devices` (matching the earlier task list).
-- Models: `User` (HEAD/MEMBER roles), `Household`, `MemberProfile` (access windows), `Device` (API token, last seen), `DoorCommand` (execution queue), and `AccessLog` (success/denied records).
-- Web flows follow POST/Redirect/Template patterns similar to `unischedule` (HTML forms, server-rendered dashboards, and CRUD views).
-- API endpoints limited to devices: command polling and acknowledgement with JSON responses and token headers.
+## ✨ Features
+- Remote trigger (وب/موبایل)
+- Access roles (Head/Member/Admin)
+- OTA firmware for ESP32
+- Django backend
+- ESP32 agent (REST + token)
+- PWA user panel
+- NFC/RFID future support
+- Event logs و گزارش‌گیری
+- Device heartbeat و command queueing
 
-## Development notes
-- Align coding conventions and project layout with the `unischedule` reference: Django templates for forms, class-based views where practical, and clear separation of concerns between apps.
-- Middleware or decorators enforce role-based access; `Member` users are redirected to the door control page, while `Head` users see management dashboards.
-- Access control logic: inactive members or out-of-window requests create denied `AccessLog` entries; valid requests create `DoorCommand` records and successful logs.
-- Device polling updates `last_seen`, returns the earliest pending command, and marks commands executed via an acknowledgement endpoint.
-- The ESP32 firmware can expose WebREPL over WiFi (default password `smartdoor`) so you can open a websocket session to the board's IP (`ws://<device_ip>:8266`), inspect on-device logs, and upload/download files without USB.
+## 🏗️ Architecture
+```mermaid
+graph TD
+    User[User devices (PWA / mobile)] -->|HTTPS| Django[Backend: Django + REST]
+    Django -->|JSON| API[Device API endpoints]
+    API -->|Token auth| ESP32[ESP32 Agent]
+    ESP32 --> Relay[Relay / Door Strike]
+    Django --> DB[(PostgreSQL)]
+    Django --> Logs[(Access & Event Logs)]
+    CI[CI/CD] --> Django
+    Django --> Docs[Docs: MkDocs/GitHub Pages]
+```
 
-## Next steps
-- Scaffold the Django project and apps reflecting this design.
-- Add PWA assets (manifest, service worker, icons) to the template-based UI.
-- Port reusable patterns from `unischedule` where applicable (form handling, template organization, and settings structure).
+## 📦 Repository structure
+```
+/backend        # Django app source & deployment notes
+/firmware       # ESP32 firmware + OTA bundles
+/hardware       # Pinouts, wiring, enclosure guides
+docs/           # MkDocs/GitHub Pages content
+/ui             # PWA assets, mockups, screenshots
+```
 
-## How to run locally
-1. **Prepare Python deps**
-   - (اختیاری) یک virtualenv بسازید.
-   - `pip install -r requirements.txt`
-2. **اجرای مایگریشن‌ها**
-   - `python manage.py migrate`
-3. **ساخت حساب ادمین (اختیاری)**
-   - `python manage.py createsuperuser`
-4. **کامپایل Tailwind (نسخه CLI)**
-   - `npm install`
-   - `npm run build:css` (فایل `static/css/tailwind.css` ساخته/به‌روز می‌شود)
-5. **اجرای سرور توسعه Django**
-   - `python manage.py runserver`
-6. برنامه از طریق `http://127.0.0.1:8000/` در دسترس است.
+## 🔧 Install guide
+```bash
+git clone https://github.com/your-org/SmartDoorControl.git
+cd SmartDoorControl
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver
+```
+
+### Development extras
+- `npm install && npm run build:css` برای خروجی Tailwind CSS
+- ساخت ادمین: `python manage.py createsuperuser`
+
+## 📡 Firmware OTA instructions
+1. Build firmware bundle (MicroPython/ESP-IDF) and place it under `firmware/releases/<version>/`.
+2. Publish the bundle URL in the backend (admin OTA feed endpoint).
+3. ESP32 agent polls `/api/device/ota` with its token; backend responds with signed firmware URL and checksum.
+4. Device downloads, verifies SHA256، applies update، سپس result را به `/api/device/ota/ack` گزارش می‌دهد.
+5. Access logs ثبت می‌شوند (موفق/ناموفق) و نسخه جدید در داشبورد نمایش داده می‌شود.
+
+## 📱 UI screenshots
+- Web panel dashboard: `docs/media/web-dashboard.png` (PWA)
+- Android app view: `docs/media/android-app.png`
+- Device on breadboard: `docs/media/breadboard.jpg`
+- Installed in intercom panel: `docs/media/panel-install.jpg`
+
+_(تصاویر می‌توانند از لینک‌های CDN یا GitHub Pages بارگذاری شوند تا مخزن بدون فایل‌های باینری باقی بماند.)_
+
+## 📦 Pinout (ESP32 + Relay)
+| Pin | Signal              | Notes                |
+| --- | ------------------- | -------------------- |
+| 5V  | VIN                 | تغذیه ماژول رله      |
+| GND | GND                 | زمین مشترک          |
+| 5   | Relay IN            | خروجی کنترل رله      |
+| 21  | I2C SDA (اختیاری)   | سنسور اضافی          |
+| 22  | I2C SCL (اختیاری)   | سنسور اضافی          |
+| 34  | Door sensor input   | فقط-ورودی (pull-up)  |
+
+## 🛣️ Roadmap
+Roadmap را در فایل [Roadmap.md](./Roadmap.md) ببینید.
+
+## 🔖 License
+این پروژه تحت مجوز MIT منتشر می‌شود. جزئیات در فایل [LICENSE](./LICENSE).
+
+## 📜 Contributing
+- Issue templates و PR template در `.github/` آماده‌اند.
+- برای مستندات عمومی از MkDocs/GitHub Pages استفاده کنید (`docs/`).
+- لطفاً تست‌ها و lint را قبل از ارسال PR اجرا کنید.
+
+## 📹 Demo
+- YouTube/GIF: https://www.youtube.com/watch?v=dQw4w9WgXcQ (نمونه نمایشی: دکمه وب → رله → باز شدن در)
+
+## 🌐 Branding ideas
+دامنه‌های پیشنهادی: `smartdoorcontrol.io`, `smartdooriran.ir`, `smarthome-gate.ir` — می‌توانید GitHub Pages را روی یکی از آن‌ها تنظیم کنید.

@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Discord support (if available)
+    url: https://example.com/community
+    about: Ask quick questions or get deployment help.

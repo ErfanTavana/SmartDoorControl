@@ -7,7 +7,7 @@ from households.models import Household
 
 class DoorCommand(models.Model):
     device = models.ForeignKey(
-        Device, on_delete=models.CASCADE, related_name="commands"
+        Device, on_delete=models.CASCADE, related_name="commands", verbose_name="دستگاه"
     )
     requested_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -15,11 +15,14 @@ class DoorCommand(models.Model):
         null=True,
         blank=True,
         related_name="door_commands",
+        verbose_name="درخواست‌دهنده",
     )
-    executed = models.BooleanField(default=False)
-    expired = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-    executed_at = models.DateTimeField(null=True, blank=True)
+    executed = models.BooleanField(default=False, verbose_name="اجرا شده")
+    expired = models.BooleanField(default=False, verbose_name="منقضی شده")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="زمان ایجاد")
+    executed_at = models.DateTimeField(
+        null=True, blank=True, verbose_name="زمان اجرا"
+    )
 
     def __str__(self) -> str:
         return f"Command {self.id} for {self.device}"
@@ -31,14 +34,23 @@ class AccessLog(models.Model):
         DENIED = "denied", "Denied"
 
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="کاربر",
     )
     household = models.ForeignKey(
-        Household, on_delete=models.CASCADE, related_name="access_logs"
+        Household,
+        on_delete=models.CASCADE,
+        related_name="access_logs",
+        verbose_name="خانوار",
     )
-    timestamp = models.DateTimeField(auto_now_add=True)
-    status = models.CharField(max_length=20, choices=Status.choices)
-    reason = models.TextField(blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True, verbose_name="زمان ثبت")
+    status = models.CharField(
+        max_length=20, choices=Status.choices, verbose_name="وضعیت"
+    )
+    reason = models.TextField(blank=True, verbose_name="دلیل")
 
     def __str__(self) -> str:
         username = self.user.username if self.user else "Unknown"

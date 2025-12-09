@@ -19,6 +19,7 @@ This repository will host the Django-based SmartDoorControl system. The goal is 
 - Middleware or decorators enforce role-based access; `Member` users are redirected to the door control page, while `Head` users see management dashboards.
 - Access control logic: inactive members or out-of-window requests create denied `AccessLog` entries; valid requests create `DoorCommand` records and successful logs.
 - Device polling updates `last_seen`, returns the earliest pending command, and marks commands executed via an acknowledgement endpoint.
+- The ESP32 firmware can expose WebREPL over WiFi (default password `smartdoor`) so you can open a websocket session to the board's IP (`ws://<device_ip>:8266`), inspect on-device logs, and upload/download files without USB.
 
 ## Next steps
 - Scaffold the Django project and apps reflecting this design.

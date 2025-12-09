@@ -14,6 +14,7 @@ import os
 import time
 import network
 import machine
+import webrepl
 
 try:
     import urequests as requests
@@ -51,6 +52,9 @@ WATCHDOG_TIMEOUT_MS = 15000
 RESET_DELAY_MS = 2000
 # HTTP request timeout (in seconds). Increase to allow slower responses before failing.
 REQUEST_TIMEOUT_SEC = 15
+# Enable the built-in WebREPL server to inspect logs/files over WiFi without USB.
+WEBREPL_ENABLED = True
+WEBREPL_PASSWORD = "smartdoor"
 
 # ========================
 # Hardware setup
@@ -82,6 +86,7 @@ last_ota_check_ms = 0
 installed_version = "unknown"
 last_version_log_ms = 0
 boot_log_sent = False
+webrepl_started = False
 
 
 def _decode_ssid(raw_ssid):
@@ -228,6 +233,33 @@ def ensure_wifi():
         return True
     print("[WiFi] Disconnected, attempting reconnection...")
     return setup_wifi()
+
+
+def maybe_start_webrepl():
+    """Start WebREPL once WiFi is connected to allow wireless access."""
+    global webrepl_started
+
+    if webrepl_started or not WEBREPL_ENABLED:
+        return
+
+    if WEBREPL_PASSWORD and len(WEBREPL_PASSWORD) < 4:
+        print("[WebREPL] Password must be at least 4 characters; skipping start")
+        return
+
+    if not wlan.isconnected():
+        return
+
+    try:
+        if WEBREPL_PASSWORD:
+            webrepl.start(password=WEBREPL_PASSWORD)
+        else:
+            webrepl.start()
+        webrepl_started = True
+        print("[WebREPL] Started on {} (connect with ws://{}:8266)".format(
+            wlan.ifconfig()[0], wlan.ifconfig()[0]
+        ))
+    except Exception as exc:
+        print("[WebREPL] Failed to start:", exc)
 
 
 # ========================
@@ -495,6 +527,8 @@ def main():
             print("[WiFi] Not connected, retrying after delay...")
             time.sleep_ms(POLL_INTERVAL_MS)
             continue
+
+        maybe_start_webrepl()
 
         if not boot_log_sent:
             if send_log(

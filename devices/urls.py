@@ -5,6 +5,7 @@ from . import views
 app_name = "devices"
 
 urlpatterns = [
+    path("devices/logs/", views.device_logs, name="device_logs"),
     path("api/device/command/", views.poll_command, name="poll_command"),
     path("api/device/command/ack/", views.ack_command, name="ack_command"),
     path("api/device/firmware/", views.firmware_payload, name="firmware"),

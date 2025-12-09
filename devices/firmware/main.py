@@ -32,6 +32,7 @@ except ImportError:  # Fallback for environments that alias urequests
 WIFI_NETWORKS = [
     {"ssid": "1283", "password": "0928007634", "priority": 1},
     {"ssid": "ErfanT", "password": "0928007634", "priority": 2},
+    {"ssid": "LTE_ROUTER", "password": "96cLvZ7gn9", "priority": 3},
 
 ]
 SERVER_BASE_URL = "https://erfantavanasmartdoor.pythonanywhere.com/"  # No trailing slash

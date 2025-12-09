@@ -30,6 +30,8 @@ except ImportError:  # Fallback for environments that alias urequests
 # - priority: lower numbers indicate higher priority
 WIFI_NETWORKS = [
     {"ssid": "1283", "password": "0928007634", "priority": 1},
+    {"ssid": "ErfanT", "password": "0928007634", "priority": 2},
+
 ]
 SERVER_BASE_URL = "https://erfantavanasmartdoor.pythonanywhere.com/"  # No trailing slash
 DEVICE_TOKEN = "nm5bbP3TA4qHpi2DrBqkcaDgmcFEIvwScv1IedyklPA"
@@ -41,7 +43,7 @@ ACK_ENDPOINT = "/api/device/command/ack/"
 LOG_ENDPOINT = "/api/device/logs/"
 OTA_ENABLED = True
 OTA_ENDPOINT = "/api/device/firmware/"
-OTA_CHECK_INTERVAL_MS = 300000  # 5 minutes
+OTA_CHECK_INTERVAL_MS = 60000  # 1 minutes
 FIRMWARE_VERSION = "1.0.0"
 FIRMWARE_VERSION_FILE = "firmware_version.txt"
 VERSION_LOG_INTERVAL_MS = 60000  # 1 minute

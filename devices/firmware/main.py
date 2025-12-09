@@ -37,7 +37,7 @@ WIFI_NETWORKS = [
 ]
 SERVER_BASE_URL = "https://erfantavanasmartdoor.pythonanywhere.com/"  # No trailing slash
 DEVICE_TOKEN = "nm5bbP3TA4qHpi2DrBqkcaDgmcFEIvwScv1IedyklPA"
-RELAY_GPIO_PIN = 5
+RELAY_GPIO_PIN = 16
 RELAY_ACTIVE_LOW = True  # Set to True if the relay is active-low
 POLL_INTERVAL_MS = 5000
 COMMAND_ENDPOINT = "/api/device/command/"
@@ -74,7 +74,7 @@ def _relay_on():
 def _relay_off():
     """Deactivate relay by floating the pin (input/high-Z = OFF)."""
     global relay_pin
-    relay_pin = machine.Pin(RELAY_GPIO_PIN, machine.Pin.IN)
+    relay_pin = machine.Pin(RELAY_GPIO_PIN, machine.Pin.IN, pull=None)
 
 
 # Initialize relay to off state

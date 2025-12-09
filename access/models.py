@@ -17,6 +17,7 @@ class DoorCommand(models.Model):
         related_name="door_commands",
     )
     executed = models.BooleanField(default=False)
+    expired = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     executed_at = models.DateTimeField(null=True, blank=True)
 

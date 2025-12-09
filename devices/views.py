@@ -1,4 +1,5 @@
 import json
+from datetime import timedelta
 
 from django.http import JsonResponse
 from django.utils import timezone
@@ -26,10 +27,22 @@ def poll_command(request):
     if not device:
         return JsonResponse({"error": "Invalid token"}, status=401)
 
-    device.last_seen = timezone.now()
+    now = timezone.now()
+    device.last_seen = now
     device.save(update_fields=["last_seen"])
 
-    command = device.commands.filter(executed=False).order_by("created_at").first()
+    expiration_cutoff = now - timedelta(seconds=15)
+    expired_commands = device.commands.filter(
+        executed=False, expired=False, created_at__lt=expiration_cutoff
+    )
+    if expired_commands.exists():
+        expired_commands.update(expired=True, executed_at=now)
+
+    command = (
+        device.commands.filter(executed=False, expired=False)
+        .order_by("created_at")
+        .first()
+    )
     if not command:
         return JsonResponse({"open": False})
 
@@ -50,7 +63,7 @@ def ack_command(request):
 
     command_id = payload.get("command_id")
     try:
-        command = device.commands.get(id=command_id, executed=False)
+        command = device.commands.get(id=command_id, executed=False, expired=False)
     except DoorCommand.DoesNotExist:
         return JsonResponse({"error": "Command not found"}, status=404)
 

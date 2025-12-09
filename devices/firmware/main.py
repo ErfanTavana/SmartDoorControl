@@ -186,6 +186,21 @@ def feed_watchdog():
 def load_installed_version():
     """Read the last installed firmware version from disk."""
     try:
+        os.stat(FIRMWARE_VERSION_FILE)
+    except OSError as exc:
+        err = getattr(exc, "errno", exc.args[0] if getattr(exc, "args", None) else None)
+        if err == errno.ENOENT:
+            print(
+                "[OTA] Version file missing, seeding default {}".format(
+                    FIRMWARE_VERSION
+                )
+            )
+            save_installed_version(FIRMWARE_VERSION)
+            return FIRMWARE_VERSION
+        print("[OTA] Could not stat version file:", exc)
+        return FIRMWARE_VERSION
+
+    try:
         with open(FIRMWARE_VERSION_FILE, "r") as fp:
             version = fp.read().strip()
             if version:
@@ -194,7 +209,8 @@ def load_installed_version():
         save_installed_version(FIRMWARE_VERSION)
         return FIRMWARE_VERSION
     except OSError as exc:
-        if exc.errno == errno.ENOENT:
+        err = getattr(exc, "errno", exc.args[0] if getattr(exc, "args", None) else None)
+        if err == errno.ENOENT:
             print(
                 "[OTA] Version file missing, seeding default {}".format(
                     FIRMWARE_VERSION

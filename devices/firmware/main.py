@@ -17,6 +17,11 @@ import machine
 import webrepl
 
 try:
+    import uhashlib as hashlib
+except ImportError:  # pragma: no cover - desktop dev environment
+    import hashlib
+
+try:
     import urequests as requests
 except ImportError:  # Fallback for environments that alias urequests
     import requests
@@ -48,6 +53,11 @@ OTA_ENDPOINT = "/api/device/firmware/"
 OTA_CHECK_INTERVAL_MS = 60000  # 1 minutes
 FIRMWARE_VERSION = "1.0.0"
 FIRMWARE_VERSION_FILE = "firmware_version.txt"
+FIRMWARE_CHECKSUM_FILE = "firmware_checksum.txt"
+CONFIG_FILE = "device_config.json"
+CONFIG_VERSION = "1.0.0"
+CONFIG_VERSION_FILE = "config_version.txt"
+CONFIG_CHECKSUM_FILE = "config_checksum.txt"
 VERSION_LOG_INTERVAL_MS = 60000  # 1 minute
 WATCHDOG_TIMEOUT_MS = 15000
 RESET_DELAY_MS = 2000
@@ -91,6 +101,7 @@ wlan = network.WLAN(network.STA_IF)
 wdt = None
 last_ota_check_ms = 0
 installed_version = "unknown"
+installed_config_version = "unknown"
 last_version_log_ms = 0
 boot_log_sent = False
 webrepl_started = False
@@ -291,49 +302,73 @@ def feed_watchdog():
 
 
 # ========================
-# Firmware version helpers
+# Firmware/config helpers
 # ========================
+
+
+def _read_text_file(path, default_value=None):
+    try:
+        with open(path, "r") as fp:
+            content = fp.read().strip()
+            return content if content else default_value
+    except OSError as exc:
+        err = getattr(exc, "errno", exc.args[0] if getattr(exc, "args", None) else None)
+        if err == errno.ENOENT:
+            return default_value
+        print("[OTA] Could not read {}: {}".format(path, exc))
+        return default_value
+    except Exception as exc:
+        print("[OTA] Could not read {}: {}".format(path, exc))
+        return default_value
+
+
+def _write_text_file(path, value):
+    try:
+        with open(path, "w") as fp:
+            fp.write(value)
+        return True
+    except Exception as exc:
+        print("[OTA] Could not write {}: {}".format(path, exc))
+        return False
+
+
+def calculate_checksum(content):
+    if content is None:
+        return ""
+    try:
+        digest = hashlib.sha256()
+        digest.update(content.encode("utf-8"))
+        try:
+            return digest.hexdigest()
+        except AttributeError:
+            return "".join("{:02x}".format(b) for b in digest.digest())
+    except Exception as exc:
+        print("[OTA] Failed to hash content:", exc)
+        return ""
+
+
+def checksum_matches(content, expected_checksum):
+    if not expected_checksum:
+        return True
+    calculated = calculate_checksum(content)
+    if calculated.lower() != expected_checksum.lower():
+        print(
+            "[OTA] Checksum mismatch. Expected {}, got {}".format(
+                expected_checksum, calculated
+            )
+        )
+        return False
+    return True
 
 
 def load_installed_version():
     """Read the last installed firmware version from disk."""
-    try:
-        os.stat(FIRMWARE_VERSION_FILE)
-    except OSError as exc:
-        err = getattr(exc, "errno", exc.args[0] if getattr(exc, "args", None) else None)
-        if err == errno.ENOENT:
-            print(
-                "[OTA] Version file missing, seeding default {}".format(
-                    FIRMWARE_VERSION
-                )
-            )
-            save_installed_version(FIRMWARE_VERSION)
-            return FIRMWARE_VERSION
-        print("[OTA] Could not stat version file:", exc)
-        return FIRMWARE_VERSION
-
-    try:
-        with open(FIRMWARE_VERSION_FILE, "r") as fp:
-            version = fp.read().strip()
-            if version:
-                return version
-        print("[OTA] Version file empty, falling back to default")
-        save_installed_version(FIRMWARE_VERSION)
-        return FIRMWARE_VERSION
-    except OSError as exc:
-        err = getattr(exc, "errno", exc.args[0] if getattr(exc, "args", None) else None)
-        if err == errno.ENOENT:
-            print(
-                "[OTA] Version file missing, seeding default {}".format(
-                    FIRMWARE_VERSION
-                )
-            )
-            save_installed_version(FIRMWARE_VERSION)
-            return FIRMWARE_VERSION
-        print("[OTA] Could not read version file:", exc)
-    except Exception as exc:
-        print("[OTA] Could not read version file:", exc)
-    return FIRMWARE_VERSION
+    version = _read_text_file(FIRMWARE_VERSION_FILE, FIRMWARE_VERSION)
+    if version is None:
+        version = FIRMWARE_VERSION
+    if version == FIRMWARE_VERSION:
+        _write_text_file(FIRMWARE_VERSION_FILE, str(version))
+    return version
 
 
 def save_installed_version(version):
@@ -346,12 +381,39 @@ def save_installed_version(version):
         print("[OTA] Failed to record version:", exc)
 
 
+def load_installed_config_version():
+    """Read the last applied configuration version."""
+    version = _read_text_file(CONFIG_VERSION_FILE, CONFIG_VERSION)
+    if version is None:
+        version = CONFIG_VERSION
+    if version == CONFIG_VERSION:
+        _write_text_file(CONFIG_VERSION_FILE, str(version))
+    return version
+
+
+def save_installed_config_version(version):
+    """Persist the installed configuration version to disk."""
+    if _write_text_file(CONFIG_VERSION_FILE, str(version)):
+        print("[OTA] Installed config version recorded:", version)
+
+
+def save_checksum(path, checksum):
+    if not checksum:
+        return
+    _write_text_file(path, checksum)
+
+
 # ========================
 # API helpers
 # ========================
 
 def _headers():
-    return {"X-DEVICE-TOKEN": DEVICE_TOKEN}
+    headers = {"X-DEVICE-TOKEN": DEVICE_TOKEN}
+    if installed_version:
+        headers["X-FIRMWARE-VERSION"] = str(installed_version)
+    if installed_config_version:
+        headers["X-CONFIG-VERSION"] = str(installed_config_version)
+    return headers
 
 
 def _build_url(endpoint):
@@ -462,9 +524,17 @@ def fetch_ota_payload():
             response.close()
 
 
-def apply_ota_update(content, version):
+def apply_ota_update(content, version, checksum=None):
     """Write new firmware to disk atomically and reboot."""
     global installed_version
+
+    if not checksum_matches(content, checksum):
+        send_log(
+            "OTA firmware checksum mismatch for version {}".format(version),
+            level="error",
+        )
+        return False
+
     temp_path = "main.py.new"
     final_path = "main.py"
     try:
@@ -472,21 +542,59 @@ def apply_ota_update(content, version):
             fp.write(content)
         os.rename(temp_path, final_path)
         save_installed_version(version)
+        save_checksum(FIRMWARE_CHECKSUM_FILE, checksum)
         installed_version = version
+        send_log("Firmware {} installed via OTA".format(version))
         print("[OTA] Update written, rebooting...")
         time.sleep_ms(RESET_DELAY_MS)
         machine.reset()
+        return True
     except Exception as exc:
         print("[OTA] Failed to apply update:", exc)
+        send_log("OTA apply failed for version {}".format(version), level="error")
         try:
             os.remove(temp_path)
         except Exception:
             pass
+    return False
+
+
+def apply_config_update(content, version, checksum=None):
+    """Persist configuration updates separately from firmware."""
+    global installed_config_version
+
+    if not content:
+        return False
+
+    if not version:
+        version = CONFIG_VERSION
+
+    if not checksum_matches(content, checksum):
+        send_log(
+            "OTA config checksum mismatch for version {}".format(version),
+            level="error",
+        )
+        return False
+
+    try:
+        with open(CONFIG_FILE, "w") as fp:
+            fp.write(content)
+        save_installed_config_version(version)
+        save_checksum(CONFIG_CHECKSUM_FILE, checksum)
+        installed_config_version = version
+        send_log("Config {} applied via OTA".format(version))
+        print("[OTA] Configuration updated to {}".format(version))
+        return True
+    except Exception as exc:
+        print("[OTA] Failed to apply configuration:", exc)
+        send_log("OTA config apply failed for {}".format(version), level="error")
+    return False
 
 
 def maybe_check_ota(last_check_ms):
     """Poll OTA endpoint periodically for wireless updates."""
     global installed_version
+    global installed_config_version
     if not OTA_ENABLED:
         return last_check_ms
 
@@ -495,13 +603,34 @@ def maybe_check_ota(last_check_ms):
         return last_check_ms
 
     payload = fetch_ota_payload()
-    if payload and payload.get("content"):
-        version = payload.get("version", "unknown")
-        if version == installed_version:
-            print("[OTA] Already running version {}, skipping".format(version))
-            return now
-        print("[OTA] Update available: version {}".format(version))
-        apply_ota_update(payload["content"], version)
+    if not payload:
+        return now
+
+    firmware_content = payload.get("content")
+    firmware_version = payload.get("version", "unknown")
+    firmware_checksum = payload.get("checksum")
+    config_content = payload.get("config")
+    config_version = payload.get("config_version") or ""
+    config_checksum = payload.get("config_checksum")
+
+    if firmware_content:
+        if firmware_version == installed_version:
+            print("[OTA] Already running version {}, skipping".format(firmware_version))
+        else:
+            print("[OTA] Update available: version {}".format(firmware_version))
+            apply_ota_update(firmware_content, firmware_version, firmware_checksum)
+
+    if config_content:
+        if config_version and config_version == installed_config_version:
+            print(
+                "[OTA] Configuration already at version {}, skipping".format(
+                    config_version
+                )
+            )
+        else:
+            print("[OTA] Applying configuration version {}".format(config_version))
+            apply_config_update(config_content, config_version, config_checksum)
+
     return now
 
 
@@ -524,13 +653,16 @@ def trigger_relay(duration_ms):
 def main():
     global last_ota_check_ms
     global installed_version
+    global installed_config_version
     global last_version_log_ms
     global boot_log_sent
 
     init_watchdog()
     setup_wifi()
     installed_version = load_installed_version()
+    installed_config_version = load_installed_config_version()
     print("[OTA] Installed firmware version:", installed_version)
+    print("[OTA] Installed config version:", installed_config_version)
     # Force an OTA check immediately after boot so new firmware is applied
     # without waiting for the periodic interval.
     last_ota_check_ms = 0
@@ -547,8 +679,8 @@ def main():
 
         if not boot_log_sent:
             if send_log(
-                "Firmware {} started with IP {}".format(
-                    installed_version, wlan.ifconfig()[0]
+                "Firmware {} (config {}) started with IP {}".format(
+                    installed_version, installed_config_version, wlan.ifconfig()[0]
                 )
             ):
                 boot_log_sent = True
@@ -576,8 +708,8 @@ def main():
             or time.ticks_diff(now_ms, last_version_log_ms) >= VERSION_LOG_INTERVAL_MS
         ):
             print(
-                "[System] Running firmware version: {} (file {})".format(
-                    installed_version, FIRMWARE_VERSION_FILE
+                "[System] Running firmware {}, config {}".format(
+                    installed_version, installed_config_version
                 )
             )
             last_version_log_ms = now_ms

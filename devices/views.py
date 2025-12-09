@@ -89,7 +89,14 @@ def firmware_payload(request):
     except DeviceFirmware.DoesNotExist:
         return JsonResponse({}, status=200)
 
-    payload = {"version": firmware.version, "content": firmware.content}
+    payload = {
+        "version": firmware.version,
+        "content": firmware.content,
+        "checksum": firmware.checksum,
+        "config": firmware.config,
+        "config_version": firmware.config_version,
+        "config_checksum": firmware.config_checksum,
+    }
     return JsonResponse(payload)
 
 

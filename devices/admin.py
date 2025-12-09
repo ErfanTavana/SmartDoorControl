@@ -19,9 +19,10 @@ class DeviceAdmin(admin.ModelAdmin):
 
 @admin.register(DeviceFirmware)
 class DeviceFirmwareAdmin(admin.ModelAdmin):
-    list_display = ("device", "version", "created_at")
-    search_fields = ("device__building__title", "version")
+    list_display = ("device", "version", "config_version", "created_at")
+    search_fields = ("device__building__title", "version", "config_version")
     autocomplete_fields = ("device",)
+    readonly_fields = ("checksum", "config_checksum", "created_at")
 
 
 @admin.register(DeviceLog)

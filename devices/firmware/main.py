@@ -45,7 +45,8 @@ DEVICE_TOKEN = "nm5bbP3TA4qHpi2DrBqkcaDgmcFEIvwScv1IedyklPA"
 RELAY_GPIO_PIN = 16
 RELAY_ACTIVE_LOW = True  # Set to True if the relay is active-low
 RELAY_DEFAULT_PULSE_MS = 1000
-POLL_INTERVAL_MS = 5000
+# Poll the backend more frequently so door commands are picked up quickly
+POLL_INTERVAL_MS = 2000
 COMMAND_ENDPOINT = "/api/device/command/"
 ACK_ENDPOINT = "/api/device/command/ack/"
 LOG_ENDPOINT = "/api/device/logs/"

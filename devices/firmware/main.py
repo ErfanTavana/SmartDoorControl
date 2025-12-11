@@ -44,6 +44,7 @@ SERVER_BASE_URL = "https://erfantavanasmartdoor.pythonanywhere.com/"  # No trail
 DEVICE_TOKEN = "nm5bbP3TA4qHpi2DrBqkcaDgmcFEIvwScv1IedyklPA"
 RELAY_GPIO_PIN = 16
 RELAY_ACTIVE_LOW = True  # Set to True if the relay is active-low
+RELAY_DEFAULT_PULSE_MS = 1000
 POLL_INTERVAL_MS = 5000
 COMMAND_ENDPOINT = "/api/device/command/"
 ACK_ENDPOINT = "/api/device/command/ack/"
@@ -780,7 +781,7 @@ def main():
 
         command = send_get_command()
         if command and command.get("open"):
-            duration = int(command.get("pulse_ms", 1000))
+            duration = int(command.get("pulse_ms", RELAY_DEFAULT_PULSE_MS))
             cmd_id = command.get("command_id")
             print("[Command] Open requested: {} ms, id={}".format(duration, cmd_id))
             trigger_relay(duration)

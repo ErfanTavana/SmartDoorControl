@@ -2,32 +2,44 @@
 {% block title %}Device Logs{% endblock %}
 {% block content %}
 <div class="stack">
-    <div class="pill-actions">
-        <h1>گزارش لاگ‌های دستگاه</h1>
-        <span class="badge">{{ household.title }}</span>
+    <div class="pill-actions justify-between">
+        <div>
+            <span class="chip chip-glow">نگهبان دستگاه</span>
+            <h2 class="mt-1">گزارش لاگ‌های دستگاه</h2>
+            <p class="muted">تجمیع لاگ‌ها بر اساس سطح و نوع رویداد تا تصویری واضح از سلامت سیستم داشته باشید.</p>
+        </div>
+        <span class="badge badge-info">{{ household.title }}</span>
     </div>
-    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+
+    <div class="card-grid">
         <div class="card">
-            <h3>آمار سطح لاگ</h3>
-            <ul>
+            <h3 class="text-lg font-semibold">آمار سطح لاگ</h3>
+            <ul class="space-y-2 text-sm text-slate-100">
                 {% for row in level_breakdown %}
-                    <li><strong>{{ row.level|default:"info"|upper }}</strong>: {{ row.count }}</li>
+                    <li class="flex items-center justify-between">
+                        <span class="chip chip-ghost">{{ row.level|default:"info"|upper }}</span>
+                        <span class="font-semibold">{{ row.count }}</span>
+                    </li>
                 {% empty %}
-                    <li>داده‌ای وجود ندارد.</li>
+                    <li class="muted">داده‌ای وجود ندارد.</li>
                 {% endfor %}
             </ul>
         </div>
         <div class="card">
-            <h3>رویدادها</h3>
-            <ul>
+            <h3 class="text-lg font-semibold">رویدادها</h3>
+            <ul class="space-y-2 text-sm text-slate-100">
                 {% for row in event_breakdown %}
-                    <li><strong>{{ row.event_type|default:"عمومی" }}</strong>: {{ row.count }}</li>
+                    <li class="flex items-center justify-between">
+                        <span class="chip chip-ghost">{{ row.event_type|default:"عمومی" }}</span>
+                        <span class="font-semibold">{{ row.count }}</span>
+                    </li>
                 {% empty %}
-                    <li>داده‌ای وجود ندارد.</li>
+                    <li class="muted">داده‌ای وجود ندارد.</li>
                 {% endfor %}
             </ul>
         </div>
     </div>
+
     <div class="table-container">
         <table>
             <thead>
@@ -44,16 +56,16 @@
             <tbody>
                 {% for log in logs %}
                     <tr>
-                        <td>{{ log.device }}</td>
+                        <td class="font-semibold">{{ log.device }}</td>
                         <td><span class="badge">{{ log.level|default:"INFO" }}</span></td>
                         <td>{{ log.event_type|default:"عمومی" }}</td>
                         <td>{{ log.firmware_version|default:"" }}</td>
                         <td>{{ log.message }}</td>
-                        <td><pre style="white-space: pre-wrap; max-width: 320px;">{{ log.metadata|default:"-" }}</pre></td>
+                        <td><pre class="whitespace-pre-wrap max-w-xs text-slate-200">{{ log.metadata|default:"-" }}</pre></td>
                         <td>{{ log.created_at }}</td>
                     </tr>
                 {% empty %}
-                    <tr><td colspan="7">لاگی برای نمایش وجود ندارد.</td></tr>
+                    <tr><td colspan="7" class="muted py-6 text-center">لاگی برای نمایش وجود ندارد.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

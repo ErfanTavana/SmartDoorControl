@@ -2,10 +2,15 @@
 {% block title %}Members{% endblock %}
 {% block content %}
 <div class="stack">
-    <div class="pill-actions">
-        <h1>مدیریت اعضا</h1>
+    <div class="pill-actions justify-between">
+        <div>
+            <span class="chip chip-glow">اعضای ساختمان</span>
+            <h2 class="mt-1">مدیریت اعضا</h2>
+            <p class="muted">فهرست اعضای مجاز برای کنترل ورودی. هر ردیف شامل بازه زمانی و وضعیت فعال است.</p>
+        </div>
         <a class="btn" href="{% url 'households:member_create' %}">افزودن عضو جدید</a>
     </div>
+
     <div class="table-container">
         <table>
             <thead>
@@ -20,7 +25,7 @@
             <tbody>
                 {% for member in members %}
                     <tr>
-                        <td>{{ member.user.username }}</td>
+                        <td class="font-semibold">{{ member.user.username }}</td>
                         <td>{{ member.allowed_from_time }}</td>
                         <td>{{ member.allowed_to_time }}</td>
                         <td>
@@ -29,8 +34,8 @@
                             </span>
                         </td>
                         <td>
-                            <div class="table-actions">
-                                <a class="btn" href="{% url 'households:member_edit' member.id %}">ویرایش</a>
+                            <div class="pill-actions">
+                                <a class="btn btn-secondary" href="{% url 'households:member_edit' member.id %}">ویرایش</a>
                                 <form method="post" action="{% url 'households:member_delete' member.id %}">
                                     {% csrf_token %}
                                     <button class="btn btn-danger" type="submit">حذف</button>
@@ -39,7 +44,7 @@
                         </td>
                     </tr>
                 {% empty %}
-                    <tr><td colspan="5">عضوی ثبت نشده است.</td></tr>
+                    <tr><td colspan="5" class="muted py-6 text-center">عضوی ثبت نشده است.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

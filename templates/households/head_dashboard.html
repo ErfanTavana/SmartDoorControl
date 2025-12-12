@@ -2,28 +2,57 @@
 {% block title %}Household Dashboard{% endblock %}
 {% block content %}
 <div class="stack">
-    <div class="pill-actions">
-        <h1>{{ household.title }}</h1>
-        <span class="badge">داشبورد خانه</span>
+    <div class="pill-actions justify-between">
+        <div class="space-y-1">
+            <span class="chip chip-glow">داشبورد خانه</span>
+            <h2>{{ household.title }}</h2>
+            <p class="muted">مرکز فرمان برای مدیریت اعضا، دستگاه‌ها و گزارش‌های امنیتی ساختمان.</p>
+        </div>
+        <div class="info-strip">
+            <span class="badge badge-info">پشتیبانی فوری</span>
+            <span class="badge">به‌روزرسانی زنده</span>
+        </div>
     </div>
 
     <div class="stat-grid">
         <div class="stat-card">
             <span class="muted">اعضا</span>
             <span class="stat-value">{{ member_count }}</span>
-            <span class="muted">کاربران مجاز ثبت‌شده</span>
+            <span class="muted text-sm">کاربران مجاز ثبت‌شده</span>
         </div>
         <div class="stat-card">
             <span class="muted">دستگاه‌ها</span>
             <span class="stat-value">{{ device_count }}</span>
-            <span class="muted">کنترل‌کننده‌های مشترک ساختمان</span>
+            <span class="muted text-sm">کنترل‌کننده‌های مشترک ساختمان</span>
         </div>
     </div>
 
-    <div class="pill-actions">
-        <a class="btn" href="{% url 'households:member_list' %}">مدیریت اعضا</a>
-        <a class="btn btn-secondary" href="{% url 'access:access_logs' %}">مشاهده گزارش‌ها</a>
-        <a class="btn btn-secondary" href="{% url 'devices:device_logs' %}">لاگ‌های دستگاه</a>
+    <div class="card-grid">
+        <div class="card">
+            <div class="pill-actions justify-between">
+                <div>
+                    <p class="chip chip-ghost">اعضا</p>
+                    <h3 class="text-lg font-semibold">مدیریت دسترسی</h3>
+                </div>
+                <span class="badge badge-success">امن</span>
+            </div>
+            <p class="muted">تعریف و ویرایش زمان‌های دسترسی، وضعیت فعال یا غیرفعال و حذف اعضا.</p>
+            <a class="btn" href="{% url 'households:member_list' %}">مدیریت اعضا</a>
+        </div>
+        <div class="card">
+            <div class="pill-actions justify-between">
+                <div>
+                    <p class="chip chip-ghost">گزارش‌ها</p>
+                    <h3 class="text-lg font-semibold">تحلیل لحظه‌ای</h3>
+                </div>
+                <span class="badge">مشاهده</span>
+            </div>
+            <p class="muted">مرور تمام ورودها و خروج‌ها، با تاکید بر هشدارهای مهم و خطاهای امنیتی.</p>
+            <div class="pill-actions">
+                <a class="btn btn-secondary" href="{% url 'access:access_logs' %}">مشاهده گزارش‌ها</a>
+                <a class="btn btn-secondary" href="{% url 'devices:device_logs' %}">لاگ‌های دستگاه</a>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}

@@ -1,3 +1,7 @@
+<p align="right">
+  <a href="./README.fa.md">🇮🇷 فارسی</a>
+</p>
+
 # SmartDoorControl
 
 SmartDoorControl pairs a Django web backend with MicroPython firmware running on an ESP32-S3 to drive a single relay for door release. The ESP32 polls the backend over HTTP, triggers the relay when a command is queued, and reports status and logs back to the server. The backend provides household management, web/PWA access to trigger door opens, and device-facing endpoints for commands, firmware, and logging.

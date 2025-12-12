@@ -46,11 +46,15 @@
         }
 
         @layer components {
-            .nav { @apply flex justify-between items-center max-w-5xl mx-auto px-5 py-4; }
+            .nav { @apply flex justify-between items-center max-w-5xl mx-auto px-5 py-4 gap-3; }
             .brand { @apply flex items-center gap-2 font-bold text-[1.05rem] text-slate-200 no-underline; }
             .brand-dot { @apply w-3 h-3 rounded-full shadow-[0_0_14px_rgba(34,211,238,0.6)]; background: linear-gradient(135deg, #22d3ee, #0ea5e9); }
-            nav a { @apply text-slate-300 inline-flex items-center ml-4 font-medium transition ease-in-out duration-150; }
-            nav a:hover { @apply text-white -translate-y-px; }
+            nav { @apply flex items-center ml-auto gap-2; }
+            nav a { @apply text-slate-300 inline-flex items-center px-3 py-2 font-medium transition ease-in-out duration-150 rounded-lg; min-height: 2.5rem; }
+            nav a:hover { @apply text-white -translate-y-px bg-white/5; }
+            .nav-toggle { @apply hidden items-center justify-center rounded-xl border border-slate-800 bg-white/5 text-slate-200 h-10 w-10 transition; }
+            .nav-toggle:hover { @apply bg-white/10; }
+            .nav-toggle-bar { @apply block h-[2px] w-6 rounded-full bg-slate-200 my-[3px]; }
             .container { @apply max-w-5xl mx-auto px-1; }
             .panel { @apply rounded-2xl border border-slate-800 p-7 shadow-[0_20px_50px_rgba(0,0,0,0.35)] bg-gradient-to-b from-white/5 to-transparent; }
             .muted { @apply text-slate-400; }
@@ -80,18 +84,39 @@
             .messages .success { @apply bg-green-500/10 text-green-200 border-green-500/40; }
             .messages .error { @apply bg-rose-500/10 text-rose-200 border-rose-500/40; }
             .subtle-card { @apply bg-white/5 border border-slate-800 rounded-xl p-4 grid gap-2; }
+            .input-error { @apply border-rose-500/70 ring-2 ring-rose-400/40; }
+            .scroll-shadow { box-shadow: inset 8px 0 10px -10px rgba(0,0,0,0.35); }
         }
 
-        @media (max-width: 640px) {
-            .nav { @apply flex-col items-start gap-3; }
-            nav { @apply flex flex-wrap gap-2 w-full; }
-            nav a { @apply m-0 px-3 py-2 rounded-lg bg-slate-400/10; }
+        /* 📱 موبایل: <=576px */
+        @media (max-width: 576px) {
+            .nav { @apply flex-wrap gap-2; }
+            nav { display: none; width: 100%; flex-direction: column; gap: 6px; padding-top: 6px; }
+            nav.nav-open { display: flex; }
+            nav a { @apply w-full bg-slate-800/50 justify-between; }
+            .nav-toggle { @apply inline-flex ml-auto; }
             .panel { @apply p-4; }
-            .pill-actions { @apply w-full justify-between; }
+            .pill-actions { @apply w-full flex-col items-stretch; }
             .btn { @apply w-full justify-center; }
             form .pill-actions { @apply flex-col items-stretch; }
             .table-container { @apply rounded-lg; }
             table { @apply min-w-full; }
+        }
+
+        /* 📲 تبلت: 577px - 992px */
+        @media (min-width: 577px) and (max-width: 992px) {
+            .nav { @apply flex-wrap; }
+            nav { @apply w-full justify-end; }
+            nav a { @apply bg-transparent; }
+            .panel { @apply p-6; }
+            .pill-actions { @apply flex-wrap gap-2; }
+        }
+
+        /* 💻 دسکتاپ: >=993px */
+        @media (min-width: 993px) {
+            .nav-toggle { display: none; }
+            nav { @apply flex; }
+            .pill-actions { @apply flex-row; }
         }
     </style>
     <title>{% block title %}Smart Door Control{% endblock %}</title>
@@ -103,7 +128,12 @@
             <span class="brand-dot"></span>
             SmartDoorControl
         </a>
-        <nav>
+        <button class="nav-toggle" type="button" aria-label="باز کردن منو" aria-expanded="false" data-nav-toggle>
+            <span class="nav-toggle-bar"></span>
+            <span class="nav-toggle-bar"></span>
+            <span class="nav-toggle-bar"></span>
+        </button>
+        <nav class="nav-links">
             {% if user.is_authenticated %}
                 <a href="{% url 'access:member_panel' %}">کنترل درب</a>
                 {% if user.is_head %}
@@ -133,5 +163,6 @@
         </div>
     </div>
 </main>
+<script type="module" src="{% static 'js/main.js' %}"></script>
 </body>
 </html>

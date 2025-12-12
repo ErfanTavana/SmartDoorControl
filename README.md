@@ -1,63 +1,74 @@
-# SmartDoorControl IoT Firmware and Backend
+# SmartDoorControl
 
-## Project Overview
-SmartDoorControl pairs a MicroPython-based ESP32-S3 door controller with a Django backend. The firmware drives a single relay to pulse a door strike and communicates with the server for commands, telemetry, and over-the-air (OTA) updates via HTTP.
+SmartDoorControl pairs a Django web backend with a MicroPython firmware for an ESP32-S3–driven door strike. The backend issues door-open commands, tracks access, and serves OTA payloads, while the device polls over HTTPS, toggles a single relay, and reports logs.
 
-## Hardware Components
-- ESP32-S3 development board running MicroPython.
-- Single relay channel connected to the ESP32 for door strike actuation (active-low control).
+## Project structure
+- `devices/firmware/main.py` — MicroPython firmware: Wi-Fi management, relay control, OTA checks, and backend polling.
+- Django backend (root): `config/` settings and URLs plus feature apps:
+  - `accounts/` custom `User` model with `HEAD` and `MEMBER` roles and login/logout views.
+  - `households/` household/building/member management for heads of household.
+  - `access/` member-facing door panel and access logs.
+  - `devices/` device records, firmware payloads, command/ack endpoints, and log ingestion.
+- Front-end styling: Tailwind-based CSS in `static/css/` with build scripts in `package.json`.
 
-## Pin Configuration
-| GPIO | Direction | Purpose | Notes |
-| --- | --- | --- | --- |
-| 16 | Output / High-Z | Relay control | Pulled low to energize relay; pin floats (input) to release. |
+## Firmware behavior
+The firmware in `devices/firmware/main.py` runs on boot and loops indefinitely:
+1. **Hardware setup:** initializes GPIO16 as high-impedance (relay off) and drives it low to energize the relay when commanded.
+2. **Connectivity:** scans configured Wi-Fi networks in priority order, reconnects as needed, and optionally starts WebREPL once connected.
+3. **Watchdog & safety:** feeds a 30s hardware watchdog during waits; on unhandled errors it delays for 2 seconds before reset.
+4. **Backend polling:** every 2 seconds it calls `GET /api/device/command/` with `X-DEVICE-TOKEN`; when `open` is true it pulses the relay for the requested duration and acknowledges via `POST /api/device/command/ack/`.
+5. **Logging:** sends boot and heartbeat logs to `POST /api/device/logs/` with firmware/config versions and connection metadata.
+6. **OTA:** every 60 seconds checks `GET /api/device/firmware/` for firmware/config content plus checksums; matching payloads are written to local files and the board is reset.
 
-## Firmware Behavior
-1. **Boot and setup**
-   - Initializes the relay pin in a disabled (high-impedance) state.
-   - Starts the hardware watchdog (30 s timeout) when available.
-   - Connects to Wi-Fi using a prioritized list of configured networks.
-   - Loads stored firmware and configuration version markers from local files.
-2. **Main loop**
-   - Ensures Wi-Fi connectivity; retries when disconnected.
-   - Optionally starts WebREPL after Wi-Fi connects.
-   - Sends a boot log once per restart with the current IP address.
-   - Polls the backend every 2 seconds for open-door commands and fires the relay for the requested pulse duration (default 1000 ms) when `open` is true.
-   - Acknowledges executed commands back to the server.
-   - Checks for OTA firmware/config updates every 60 seconds and applies them when checksums match, then reboots.
-   - Emits heartbeat logs every 60 seconds reporting firmware and config versions.
-   - Feeds the watchdog during network waits and sleeps; on unhandled exceptions the board delays 2 seconds and resets.
+Key configuration constants (network list, server URL/token, GPIO pin, pulse duration, watchdog timeouts, OTA intervals, WebREPL toggle/password) live at the top of `devices/firmware/main.py` and must be edited before flashing.
 
-## Communication & Protocols
-- **Wi-Fi STA mode:** scans for configured SSIDs and connects in priority order; reconnection logic is built in.
-- **HTTP (REST over TLS):**
-  - `GET /api/device/command/` to poll for pending door commands.
-  - `POST /api/device/command/ack/` to acknowledge executed commands.
-  - `POST /api/device/logs/` to push structured device logs with metadata.
-  - `GET /api/device/firmware/` to retrieve OTA firmware and configuration payloads.
-- **WebREPL (optional):** starts when enabled and Wi-Fi is connected for interactive access over port 8266.
+## Backend capabilities
+- **Roles & auth:** custom `User` model (`accounts.models.User`) adds `HEAD` and `MEMBER` roles. Heads land on the household dashboard; members on the door panel. Authentication uses Django’s built-in session login.
+- **Households & members:** heads manage a single household/building; they can create member accounts with allowed time windows and activation flags via `households.views`.
+- **Door access flow:**
+  - Members submit door-open requests from `/door/`. Access is allowed when the member profile is active and within the configured time window; otherwise the attempt is logged as denied.
+  - Heads can also trigger door commands for their household.
+  - Commands are stored as `access.models.DoorCommand` records. Devices poll and mark commands executed via the ack endpoint; expired commands (older than 15 seconds) are marked accordingly during polling.
+  - Each request writes an `AccessLog` entry indicating success or denial.
+- **Device management:** each `devices.models.Device` belongs to a building and has a unique API token. Heads can view the last 200 device logs plus level/event breakdowns at `/devices/logs/`.
+- **Firmware distribution & logs:** device firmware/config blobs are stored per-device (`DeviceFirmware`) with auto-generated SHA-256 checksums; devices fetch these payloads and push structured logs to `DeviceLog` records.
 
-## Configuration Parameters
-Key constants are defined in `devices/firmware/main.py`:
-- Wi-Fi networks (`WIFI_NETWORKS` list with SSID, password, priority).
-- Server base URL and device token (`SERVER_BASE_URL`, `DEVICE_TOKEN`).
-- Relay settings (`RELAY_GPIO_PIN`, `RELAY_ACTIVE_LOW`, `RELAY_DEFAULT_PULSE_MS`).
-- Polling and retry timings (`POLL_INTERVAL_MS`, `WATCHDOG_TIMEOUT_MS`, `REQUEST_TIMEOUT_SEC`, `RESET_DELAY_MS`).
-- OTA controls (`OTA_ENABLED`, `OTA_ENDPOINT`, `OTA_CHECK_INTERVAL_MS`, version/checksum file names).
-- Logging interval and WebREPL toggle/password.
+### Device API endpoints
+All endpoints expect `X-DEVICE-TOKEN` to identify the device.
 
-## How to Flash / Upload the Firmware
-1. Flash MicroPython to the ESP32-S3.
-2. Update configuration constants in `devices/firmware/main.py` for your Wi-Fi credentials, server URL, device token, and relay polarity/pin as needed.
-3. Upload `main.py` to the root of the device filesystem (e.g., via WebREPL or a serial file transfer tool) so it runs on boot.
-4. Reboot the board; it will connect to Wi-Fi, start logging, and begin polling the backend.
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/device/command/` | Poll for the oldest pending door command; returns `{open: true, command_id, pulse_ms}` or `{open: false}`. Marks old commands (>15s) as expired. |
+| `POST` | `/api/device/command/ack/` | Body: `{"command_id": <id>}`. Marks a command as executed. |
+| `GET` | `/api/device/firmware/` | Returns firmware/config versions, content, and checksums for OTA. Empty object when no payload exists. |
+| `POST` | `/api/device/logs/` | Body includes `message`, optional `level`, `event_type`, `firmware_version`, and `metadata`; stores a `DeviceLog` entry and updates `last_seen`. |
 
-## How to Use the Device
-- Ensure the relay coil is wired to the controlled door hardware and its input line to GPIO16 (active-low).
-- Provision the device token and firmware payload for the matching device record in the Django backend.
-- Power up the ESP32-S3; once connected, it will poll the server and trigger the relay whenever the backend returns an `open` command.
+## Running the backend locally
+Requirements: Python 3.11+ and SQLite (default). Tailwind build requires Node.js if you want to regenerate CSS.
 
-## Limitations & Notes
-- Only one relay output is controlled; no additional sensors or inputs are referenced in the firmware.
-- WebREPL requires the configured password and an active Wi-Fi connection; it is skipped if the password is shorter than four characters.
-- OTA updates rely on backend-provided content and checksums; mismatches prevent installation.
+```bash
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py createsuperuser  # optional, for admin access
+python manage.py runserver
+```
+
+Static CSS is prebuilt at `static/css/tailwind.css`. To rebuild styles after editing `static/css/input.css`:
+```bash
+npm install
+npm run build
+```
+
+## Flashing and configuring the firmware
+1. Flash MicroPython to an ESP32-S3 board.
+2. Update the constants near the top of `devices/firmware/main.py` with your Wi-Fi credentials, backend base URL, device token, and relay polarity/pin.
+3. Upload `main.py` to the root of the device filesystem (WebREPL or serial transfer).
+4. Power-cycle the board; it will connect to Wi-Fi, send a boot log, and begin polling the backend for commands and OTA updates.
+
+## Limitations & notes
+- Only a single relay GPIO is driven; no sensors/inputs are read by the firmware.
+- Device endpoints rely solely on the API token for authentication; ensure tokens remain secret.
+- Default Django settings enable `DEBUG` and SQLite; adjust for production deployments.
+
+## License
+This project is released under the MIT License. See [LICENSE](LICENSE).
